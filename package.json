@@ -1,0 +1,21 @@
+{
+  "name": "majiong",
+  "version": "1.0.0",
+  "description": "Mahjong tile pattern analyzer",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc && node dist/PatternParser.js",
+    "clean": "rimraf dist",
+    "watch": "tsc -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.10.4",
+    "rimraf": "^5.0.10",
+    "typescript": "^5.3.3"
+  }
+}
