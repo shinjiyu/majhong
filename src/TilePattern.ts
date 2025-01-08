@@ -17,6 +17,10 @@ export enum Color {
 export class TilePattern {
     // 4个32位整数，每个表示一种颜色的牌
     private colors: number[];
+    // 缓存的标准形
+    private canonicalFormCache: TilePattern | null = null;
+    // 缓存的标准形ID
+    private canonicalIdCache: string | null = null;
 
     /**
      * 构造函数
@@ -30,7 +34,7 @@ export class TilePattern {
      * 添加指定数量的牌
      * @param number - 牌的数字(1-13)
      * @param color - 牌的颜色(Color枚举值)
-     * @param count - 添加的数量(1-3)，默认为1
+     * @param count - 添加的数量(1-2)，默认为1
      * @throws Error 如果参数无效
      */
     addTile(number: number, color: Color, count: number = 1): void {
@@ -38,8 +42,8 @@ export class TilePattern {
         if (number < 1 || number > 13) {
             throw new Error("Number must be between 1 and 13");
         }
-        if (count < 0 || count > 3) {
-            throw new Error("Count must be between 0 and 3");
+        if (count < 1 || count > 2) {
+            throw new Error("Count must be between 1 and 2");
         }
 
         // 计算位置和当前数量
@@ -47,11 +51,18 @@ export class TilePattern {
         const current = (this.colors[color] >> pos) & 0b11;
 
         // 更新数量
-        const newCount = Math.min(current + count, 3);
+        const newCount = current + count;
+
+        if(newCount > 2){
+            throw new Error("Count must be between 1 and 2");
+        }
         // 清除原位置
         this.colors[color] &= ~(0b11 << pos);
         // 设置新数量
         this.colors[color] |= (newCount << pos);
+
+        // 清除缓存
+        this.clearCache();
     }
 
     /**
@@ -69,22 +80,24 @@ export class TilePattern {
      * 移除指定数量的牌
      * @param number - 牌的数字(1-13)
      * @param color - 牌的颜色(Color枚举值)
-     * @param count - 移除的数量(1-3)，默认为1
+     * @param count - 移除的数量(0-2)，默认为1
      * @returns 是否成功移除
      */
     removeTile(number: number, color: Color, count: number = 1): boolean {
-        const current = this.getTileCount(number, color);
-        if (current < count) {
-            return false;
+        const result = this.getTileCount(number, color) >= count;
+        if (result) {
+            const pos = (number - 1) * 2;
+            const current = this.getTileCount(number, color);
+            const newCount = current - count;
+            // 清除原位置
+            this.colors[color] &= ~(0b11 << pos);
+            // 设置新数量
+            this.colors[color] |= (newCount << pos);
+            
+            // 清除缓存
+            this.clearCache();
         }
-
-        const pos = (number - 1) * 2;
-        const newCount = current - count;
-        // 清除原位置
-        this.colors[color] &= ~(0b11 << pos);
-        // 设置新数量
-        this.colors[color] |= (newCount << pos);
-        return true;
+        return result;
     }
 
     /**
@@ -104,6 +117,8 @@ export class TilePattern {
             throw new Error("Invalid pattern array");
         }
         this.colors = [...pattern];
+        // 清除缓存
+        this.clearCache();
     }
 
     /**
@@ -111,6 +126,17 @@ export class TilePattern {
      */
     clear(): void {
         this.colors.fill(0);
+        // 清除缓存
+        this.clearCache();
+    }
+
+    /**
+     * 清除缓存
+     * @private
+     */
+    private clearCache(): void {
+        this.canonicalFormCache = null;
+        this.canonicalIdCache = null;
     }
 
     /**
@@ -159,5 +185,82 @@ export class TilePattern {
         const newPattern = new TilePattern();
         newPattern.setPattern(this.getPattern());
         return newPattern;
+    }
+
+    /**
+     * 获取牌型的标准形式
+     * 标准形式是所有同构牌型中字典序最小的形式
+     * @returns 标准形式的TilePattern实例
+     */
+    getCanonicalForm(): TilePattern {
+        // 如果有缓存，直接返回
+        if (this.canonicalFormCache) {
+            return this.canonicalFormCache.clone();
+        }
+
+        // 1. 找到最小的非零数字
+        let minNumber = 14;
+        for (let color = 0; color < 4; color++) {
+            for (let number = 1; number <= 13; number++) {
+                if (this.getTileCount(number, color as Color) > 0) {
+                    minNumber = Math.min(minNumber, number);
+                }
+            }
+        }
+
+        // 如果没有牌，返回空牌型
+        if (minNumber === 14) {
+            this.canonicalFormCache = new TilePattern();
+            return this.canonicalFormCache.clone();
+        }
+
+        // 2. 创建循环平移后的数组
+        const shift = minNumber - 1;
+        const shiftedColors = this.colors.map(colorPattern => {
+            // 右移shift个数字（每个数字2位）
+            const rightPart = colorPattern >>> (shift * 2);
+            // 左移(13-shift)个数字
+            const leftPart = colorPattern << ((13 - shift) * 2);
+            // 组合，确保高位清零
+            return (rightPart | leftPart) & ((1 << 26) - 1);  // 13个数字共26位
+        });
+
+        // 3. 生成所有可能的颜色排列，找出最小的
+        const sortedColors = [...shiftedColors].sort();
+
+        // 4. 创建新的TilePattern实例并设置标准形
+        this.canonicalFormCache = new TilePattern();
+        this.canonicalFormCache.setPattern(sortedColors);
+        return this.canonicalFormCache.clone();
+    }
+
+    /**
+     * 检查两个牌型是否同构
+     * @param other - 要比较的牌型
+     * @returns 是否同构
+     */
+    isIsomorphic(other: TilePattern): boolean {
+        const thisCanonical = this.getCanonicalForm();
+        const otherCanonical = other.getCanonicalForm();
+        
+        // 比较标准形式是否相同
+        return thisCanonical.getPattern().every(
+            (value, index) => value === otherCanonical.getPattern()[index]
+        );
+    }
+
+    /**
+     * 获取牌型的唯一标识符
+     * 用于快速比较、存储等场景
+     * @returns 标准形式的字符串表示
+     */
+    getCanonicalId(): string {
+        // 如果有缓存，直接返回
+        if (this.canonicalIdCache !== null) {
+            return this.canonicalIdCache;
+        }
+
+        this.canonicalIdCache = this.getCanonicalForm().getPattern().join(',');
+        return this.canonicalIdCache;
     }
 } 
