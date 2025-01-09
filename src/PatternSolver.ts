@@ -1,6 +1,7 @@
-import { Color, TilePattern } from './TilePattern';
+import { TilePattern } from './TilePattern';
 import { StandardForm, Combination, Tile } from './StandardForm';
 import { PatternPreprocessor } from './PatternPreprocessor';
+import { PatternCache } from './PatternCache';
 
 export interface ScoredCombination extends Combination {
     score: number;
@@ -12,6 +13,12 @@ export interface Solution {
 }
 
 export class PatternSolver {
+    private cache: PatternCache;
+
+    constructor() {
+        this.cache = PatternCache.getInstance();
+    }
+
     /**
      * 寻找牌型的最高分解法
      */
@@ -40,9 +47,30 @@ export class PatternSolver {
     }
 
     /**
-     * 求解标准型牌型的最高分
+     * 求解标准型
+     * @private
      */
     private solveStandardForm(pattern: TilePattern): Solution {
+        // 尝试从缓存获取结果
+        const cachedSolution = this.cache.get(pattern);
+        if (cachedSolution) {
+            return cachedSolution;
+        }
+
+        // 如果缓存未命中，计算解决方案
+        const solution = this.calculateStandardFormSolution(pattern);
+        
+        // 将结果存入缓存
+        this.cache.set(pattern, solution);
+        
+        return solution;
+    }
+
+    /**
+     * 实际计算标准型解决方案的方法
+     * @private
+     */
+    private calculateStandardFormSolution(pattern: TilePattern): Solution {
         // 1. 找出所有可能的顺子
         const sequences = this.findAllSequences(pattern);
         
@@ -188,4 +216,20 @@ export class PatternSolver {
             combinations: solutions.flatMap(solution => solution.combinations)
         };
     }
+
+    /**
+     * 获取缓存统计信息
+     */
+    getCacheStats(): Map<string, { hits: number, lastAccessed: number }> {
+        return this.cache.getStats();
+    }
+
+    /**
+     * 清除缓存
+     */
+    clearCache(): void {
+        this.cache.clear();
+    }
+
+    // ... 其他现有方法 ...
 } 
