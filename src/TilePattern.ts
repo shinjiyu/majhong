@@ -401,4 +401,82 @@ export class TilePattern {
 
         return sequences;
     }
+
+    /**
+     * 查找指定颜色的所有可能连续区间（包括重叠区间）
+     * 使用上升沿和下降沿来查找连续区间
+     * 例如：
+     * 1,2,3,4,5 返回 [1,5]
+     * 1,2,3,3,4,5 返回 [1,3], [3,5], [1,5]
+     * 1,2,3,3,4,4,5 返回 [1,4], [3,5], [1,5]
+     * @param color 要检查的颜色
+     * @returns 连续区间列表，每个区间是一个[起始数字, 结束数字]的数组
+     */
+    findAllContinuousSequences(color: Color): [number, number][] {
+        const pattern = this.colors[color];
+        const sequences: [number, number][] = [];
+        
+        // 1. 找出所有上升沿和下降沿
+        const edges: Array<{pos: number, type: 'rise' | 'fall', count: number}> = [];
+        let prevCount = 0;
+        
+        for (let number = 1; number <= 13; number++) {
+            const pos = (number - 1) * 2;
+            const count = (pattern >> pos) & 0b11;
+            const actualCount = count === 0 ? 0 : count === 1 ? 1 : 2;
+            
+            if (actualCount > prevCount) {
+                // 上升沿
+                edges.push({pos: number, type: 'rise', count: actualCount - prevCount});
+            } else if (actualCount < prevCount) {
+                // 下降沿
+                edges.push({pos: number, type: 'fall', count: prevCount - actualCount});
+            }
+            prevCount = actualCount;
+        }
+        
+        let globalCount = 0;
+        // 2. 处理所有上升沿和下降沿对
+        for (let i = 0; i < edges.length; i++) {
+            if(edges[i].type !== 'rise') {
+                globalCount -= edges[i].count;
+                continue;
+            }
+            
+            // 从当前上升沿开始，尝试所有可能的下降沿
+            const start = edges[i].pos;
+            globalCount += edges[i].count;
+            let currentCount = globalCount;
+
+            for (let j = i + 1; j < edges.length; j++) {
+                if (edges[j].type === 'rise') {
+                    currentCount += edges[j].count;
+                } else {
+                    currentCount -= edges[j].count;
+                }
+                
+                // 如果当前区间长度大于等于3，且是有效的区间（计数大于0）
+                const end = edges[j].pos;
+                if (end - start >= 2 && currentCount >= 0) {
+                    sequences.push([start, end]);
+                }
+                
+                // 如果计数变为0，结束当前搜索
+                if (currentCount <= 0) break;
+            }
+        }
+        
+        // 3. 去除被其他区间完全包含的区间
+        return sequences.filter((seq1, i) => 
+            !sequences.some((seq2, j) => 
+                i !== j && 
+                seq2[0] <= seq1[0] && 
+                seq2[1] >= seq1[1] &&
+                (seq2[0] < seq1[0] || seq2[1] > seq1[1])  // 避免完全相同的区间被移除
+            )
+        );
+    }
+
+
+    
 } 

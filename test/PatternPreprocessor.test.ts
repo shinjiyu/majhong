@@ -119,4 +119,113 @@ describe('PatternPreprocessor', () => {
         expect(removed.length).toBe(1);
         expect(removed[0]).toEqual({ number: 1, color: Color.RED });
     });
+
+    describe('splitByConnectivity', () => {
+        test('should split isolated components', () => {
+            // 添加两个不相连的组合
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);  // 1,2红色相连
+            
+            pattern.addTile(5, Color.BLUE);
+            pattern.addTile(6, Color.BLUE);  // 5,6蓝色相连
+            
+            const components = PatternPreprocessor.splitByConnectivity(pattern);
+            expect(components.length).toBe(2);
+            
+            // 验证第一个组合
+            const comp1HasRed12 = components.some(comp => 
+                comp.getTileCount(1, Color.RED) === 1 && 
+                comp.getTileCount(2, Color.RED) === 1
+            );
+            expect(comp1HasRed12).toBe(true);
+            
+            // 验证第二个组合
+            const comp2HasBlue56 = components.some(comp => 
+                comp.getTileCount(5, Color.BLUE) === 1 && 
+                comp.getTileCount(6, Color.BLUE) === 1
+            );
+            expect(comp2HasBlue56).toBe(true);
+        });
+
+        test('should connect by same number different colors', () => {
+            // 添加同数字不同颜色的牌
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(1, Color.BLACK);
+            pattern.addTile(1, Color.BLUE);
+            
+            const components = PatternPreprocessor.splitByConnectivity(pattern);
+            expect(components.length).toBe(1);
+            
+            // 验证所有牌都在同一个组件中
+            const component = components[0];
+            expect(component.getTileCount(1, Color.RED)).toBe(1);
+            expect(component.getTileCount(1, Color.BLACK)).toBe(1);
+            expect(component.getTileCount(1, Color.BLUE)).toBe(1);
+        });
+
+        test('should connect by adjacent numbers same color', () => {
+            // 添加同色连续数字的牌
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED);
+            
+            const components = PatternPreprocessor.splitByConnectivity(pattern);
+            expect(components.length).toBe(1);
+            
+            // 验证所有牌都在同一个组件中
+            const component = components[0];
+            expect(component.getTileCount(1, Color.RED)).toBe(1);
+            expect(component.getTileCount(2, Color.RED)).toBe(1);
+            expect(component.getTileCount(3, Color.RED)).toBe(1);
+        });
+
+        test('should handle complex connections', () => {
+            // 添加复杂的连接关系：
+            // 红1-红2-红3
+            //      |
+            //    黑2-蓝2
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED);
+            pattern.addTile(2, Color.BLACK);
+            pattern.addTile(2, Color.BLUE);
+            
+            const components = PatternPreprocessor.splitByConnectivity(pattern);
+            expect(components.length).toBe(1);
+            
+            // 验证所有牌都在同一个组件中
+            const component = components[0];
+            expect(component.getTileCount(1, Color.RED)).toBe(1);
+            expect(component.getTileCount(2, Color.RED)).toBe(1);
+            expect(component.getTileCount(3, Color.RED)).toBe(1);
+            expect(component.getTileCount(2, Color.BLACK)).toBe(1);
+            expect(component.getTileCount(2, Color.BLUE)).toBe(1);
+        });
+
+        test('should handle multiple tiles of same type', () => {
+            // 添加多张同类型的牌
+            pattern.addTile(1, Color.RED, 2);  // 两张红1
+            pattern.addTile(2, Color.RED);     // 一张红2
+            
+            const components = PatternPreprocessor.splitByConnectivity(pattern);
+            expect(components.length).toBe(1);
+            
+            // 验证牌的数量正确
+            const component = components[0];
+            expect(component.getTileCount(1, Color.RED)).toBe(2);
+            expect(component.getTileCount(2, Color.RED)).toBe(1);
+        });
+
+        test('should handle edge cases', () => {
+            // 测试边界数字
+            pattern.addTile(1, Color.RED);   // 最小数字
+            pattern.addTile(13, Color.BLUE); // 最大数字
+            
+            const components = PatternPreprocessor.splitByConnectivity(pattern);
+            expect(components.length).toBe(2);
+            
+            // 验证每个组件只包含一张牌
+            expect(components.every(comp => comp.getTotalCount() === 1)).toBe(true);
+        });
+    });
 }); 
