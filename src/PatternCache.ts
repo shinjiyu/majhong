@@ -8,9 +8,19 @@ export interface CacheStats {
     lastAccessed: number;
 }
 
+export interface HitRateStats {
+    totalRequests: number;
+    cacheHits: number;
+    cacheMisses: number;
+    hitRate: number;
+    periodStart: number;
+    periodEnd: number;
+}
+
 interface SerializedCache {
     patterns: { [key: string]: Solution };
     stats: { [key: string]: CacheStats };
+    hitRateStats: HitRateStats;
     lastSaved: number;
 }
 
@@ -23,6 +33,14 @@ export class PatternCache {
     private isDirty: boolean;
     private lastSaved: number;
     private isInitialized: boolean;
+    private hitRateStats: HitRateStats = {
+        totalRequests: 0,
+        cacheHits: 0,
+        cacheMisses: 0,
+        hitRate: 0,
+        periodStart: Date.now(),
+        periodEnd: Date.now()
+    };
 
     private constructor(maxSize: number = 10000) {
         this.cache = new Map();
@@ -32,6 +50,30 @@ export class PatternCache {
         this.isDirty = false;
         this.lastSaved = Date.now();
         this.isInitialized = false;
+        this.resetHitRateStats();
+    }
+
+    private resetHitRateStats(): void {
+        this.hitRateStats = {
+            totalRequests: 0,
+            cacheHits: 0,
+            cacheMisses: 0,
+            hitRate: 0,
+            periodStart: Date.now(),
+            periodEnd: Date.now()
+        };
+    }
+
+    private updateHitRateStats(isHit: boolean): void {
+        this.hitRateStats.totalRequests++;
+        if (isHit) {
+            this.hitRateStats.cacheHits++;
+        } else {
+            this.hitRateStats.cacheMisses++;
+        }
+        this.hitRateStats.hitRate = this.hitRateStats.cacheHits / this.hitRateStats.totalRequests;
+        this.hitRateStats.periodEnd = Date.now();
+        this.isDirty = true;
     }
 
     static getInstance(): PatternCache {
@@ -60,15 +102,17 @@ export class PatternCache {
                 // 恢复缓存数据
                 this.cache = new Map(Object.entries(serialized.patterns));
                 this.stats = new Map(Object.entries(serialized.stats));
+                this.hitRateStats = serialized.hitRateStats || this.hitRateStats;
                 this.lastSaved = serialized.lastSaved;
 
                 console.log(`Loaded ${this.cache.size} patterns from cache file`);
+                console.log(`Current hit rate: ${(this.hitRateStats.hitRate * 100).toFixed(2)}%`);
             }
         } catch (error) {
             console.error('Error loading cache:', error);
-            // 如果加载失败，使用空缓存
             this.cache.clear();
             this.stats.clear();
+            this.resetHitRateStats();
         }
     }
 
@@ -79,18 +123,18 @@ export class PatternCache {
             const serialized: SerializedCache = {
                 patterns: Object.fromEntries(this.cache),
                 stats: Object.fromEntries(this.stats),
+                hitRateStats: this.hitRateStats,
                 lastSaved: Date.now()
             };
 
             const tempFile = `${this.cacheFile}.tmp`;
-            // 先写入临时文件
             fs.writeFileSync(tempFile, JSON.stringify(serialized, null, 2));
-            // 然后重命名，这样可以保证原子性写入
             fs.renameSync(tempFile, this.cacheFile);
             
             this.lastSaved = Date.now();
             this.isDirty = false;
             console.log(`Saved ${this.cache.size} patterns to cache file`);
+            console.log(`Current hit rate: ${(this.hitRateStats.hitRate * 100).toFixed(2)}%`);
         } catch (error) {
             console.error('Error saving cache:', error);
         }
@@ -104,8 +148,11 @@ export class PatternCache {
         const id = pattern.getCanonicalId();
         const solution = this.cache.get(id);
         
+        // 更新命中统计
+        this.updateHitRateStats(!!solution);
+        
         if (solution) {
-            // 更新统计信息
+            // 更新访问统计
             const stats = this.stats.get(id) || { hits: 0, lastAccessed: 0 };
             stats.hits++;
             stats.lastAccessed = Date.now();
@@ -123,7 +170,6 @@ export class PatternCache {
 
         const id = pattern.getCanonicalId();
         
-        // 如果缓存已满，移除最少使用的项
         if (this.cache.size >= this.maxSize) {
             this.evictLeastUsed();
         }
@@ -205,5 +251,46 @@ export class PatternCache {
             this.saveCache();
         }
         PatternCache.instance = undefined;
+    }
+
+    /**
+     * 获取缓存命中率统计信息
+     */
+    getHitRateStats(): HitRateStats {
+        if (!this.isInitialized) {
+            throw new Error('Cache not initialized. Call initialize() first.');
+        }
+        return { ...this.hitRateStats };
+    }
+
+    /**
+     * 重置命中率统计
+     */
+    resetStats(): void {
+        if (!this.isInitialized) {
+            throw new Error('Cache not initialized. Call initialize() first.');
+        }
+        this.resetHitRateStats();
+        this.isDirty = true;
+    }
+
+    /**
+     * 获取详细的缓存统计信息
+     */
+    getDetailedStats(): {
+        hitRate: HitRateStats;
+        cacheSize: number;
+        maxSize: number;
+        itemStats: Map<string, CacheStats>;
+    } {
+        if (!this.isInitialized) {
+            throw new Error('Cache not initialized. Call initialize() first.');
+        }
+        return {
+            hitRate: { ...this.hitRateStats },
+            cacheSize: this.cache.size,
+            maxSize: this.maxSize,
+            itemStats: new Map(this.stats)
+        };
     }
 } 

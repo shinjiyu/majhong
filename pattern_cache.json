@@ -879,8 +879,8 @@
       "lastAccessed": 1736424717247
     },
     "65,65,85,85": {
-      "hits": 1,
-      "lastAccessed": 1736424717247
+      "hits": 2,
+      "lastAccessed": 1736424984896
     },
     "0,0,21,21": {
       "hits": 3,
@@ -899,9 +899,17 @@
       "lastAccessed": 1736424717254
     },
     "0,21,21,21": {
-      "hits": 1,
-      "lastAccessed": 1736424717254
+      "hits": 2,
+      "lastAccessed": 1736424984904
     }
   },
-  "lastSaved": 1736424717261
+  "hitRateStats": {
+    "totalRequests": 2,
+    "cacheHits": 2,
+    "cacheMisses": 0,
+    "hitRate": 1,
+    "periodStart": 1736424984892,
+    "periodEnd": 1736424984904
+  },
+  "lastSaved": 1736424984907
 }
