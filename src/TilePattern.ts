@@ -57,7 +57,7 @@ export class TilePattern {
         // 如果current为1且count为1，则设置为11
         // 如果current为1且count为2，或current为11，则抛出错误
         if ((current === 0b11) || (current === 0b01 && count === 0b10)) {
-            throw new Error(current === 0b11 ? "Cannot add more tiles" : "Cannot add 2 tiles when there is already 1");
+            throw new Error("Cannot add more tiles");
         }
         newBits = current === 0 ? (count & 0b10 ? 0b11 : 0b01) : 0b11;
 
@@ -97,6 +97,7 @@ export class TilePattern {
         // 检查是否可以移除
         if (current === 0) return false;  // 没有牌可移除
         if (current === 1 && count > 1) return false;  // 只有一张牌，不能移除两张
+        if(count > 2) return false;  // 移除的数量大于当前数量
         
         // 计算新的位值：11->01->00
         let newBits;

@@ -20,7 +20,7 @@ describe('TilePattern', () => {
 
         it('should not exceed maximum tile count', () => {
             pattern.addTile(3, Color.RED, 2);
-            expect(() => pattern.addTile(3, Color.RED, 1)).toThrow("Count must be between 1 and 2");
+            expect(() => pattern.addTile(3, Color.RED, 1)).toThrow("Cannot add more tiles");
         });
 
         it('should throw error for invalid number', () => {
