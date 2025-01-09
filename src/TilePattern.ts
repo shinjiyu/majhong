@@ -49,17 +49,22 @@ export class TilePattern {
         // 计算位置和当前数量
         const pos = (number - 1) * 2;  // 每个数字占2位
         const current = (this.colors[color] >> pos) & 0b11;
-
-        // 更新数量
-        const newCount = current + count;
-
-        if(newCount > 2){
-            throw new Error("Count must be between 1 and 2");
+        
+        // 计算新的位值：00->01->11
+        let newBits;
+        // 使用位运算计算新的位值
+        // 如果current为0，则根据count设置为01或11
+        // 如果current为1且count为1，则设置为11
+        // 如果current为1且count为2，或current为11，则抛出错误
+        if ((current === 0b11) || (current === 0b01 && count === 0b10)) {
+            throw new Error(current === 0b11 ? "Cannot add more tiles" : "Cannot add 2 tiles when there is already 1");
         }
+        newBits = current === 0 ? (count & 0b10 ? 0b11 : 0b01) : 0b11;
+
         // 清除原位置
         this.colors[color] &= ~(0b11 << pos);
         // 设置新数量
-        this.colors[color] |= (newCount << pos);
+        this.colors[color] |= (newBits << pos);
 
         // 清除缓存
         this.clearCache();
@@ -69,35 +74,46 @@ export class TilePattern {
      * 获取指定牌的数量
      * @param number - 牌的数字(1-13)
      * @param color - 牌的颜色(Color枚举值)
-     * @returns 牌的数量(0-3)
+     * @returns 牌的数量(0-2)
      */
     getTileCount(number: number, color: Color): number {
         const pos = (number - 1) * 2;
-        return (this.colors[color] >> pos) & 0b11;
+        const bits = (this.colors[color] >> pos) & 0b11;
+        // 00->0, 01->1, 11->2
+        return bits === 0 ? 0 : bits === 1 ? 1 : 2;
     }
 
     /**
      * 移除指定数量的牌
      * @param number - 牌的数字(1-13)
      * @param color - 牌的颜色(Color枚举值)
-     * @param count - 移除的数量(0-2)，默认为1
+     * @param count - 移除的数量(1-2)，默认为1
      * @returns 是否成功移除
      */
     removeTile(number: number, color: Color, count: number = 1): boolean {
-        const result = this.getTileCount(number, color) >= count;
-        if (result) {
-            const pos = (number - 1) * 2;
-            const current = this.getTileCount(number, color);
-            const newCount = current - count;
-            // 清除原位置
-            this.colors[color] &= ~(0b11 << pos);
-            // 设置新数量
-            this.colors[color] |= (newCount << pos);
-            
-            // 清除缓存
-            this.clearCache();
+        const pos = (number - 1) * 2;
+        const current = (this.colors[color] >> pos) & 0b11;
+        
+        // 检查是否可以移除
+        if (current === 0) return false;  // 没有牌可移除
+        if (current === 1 && count > 1) return false;  // 只有一张牌，不能移除两张
+        
+        // 计算新的位值：11->01->00
+        let newBits;
+        if (current === 0b11) {  // 两张牌
+            newBits = count === 1 ? 0b01 : 0b00;
+        } else {  // 一张牌
+            newBits = 0b00;
         }
-        return result;
+
+        // 清除原位置
+        this.colors[color] &= ~(0b11 << pos);
+        // 设置新数量
+        this.colors[color] |= (newBits << pos);
+        
+        // 清除缓存
+        this.clearCache();
+        return true;
     }
 
     /**
@@ -262,5 +278,126 @@ export class TilePattern {
 
         this.canonicalIdCache = this.getCanonicalForm().getPattern().join(',');
         return this.canonicalIdCache;
+    }
+
+    /**
+     * 检查指定数字是否能组成刻子
+     * @param number 要检查的数字
+     * @returns 是否能组成刻子
+     */
+    canFormTriplet(number: number): boolean {
+        // 直接从内部数组获取数据，避免多次调用getTileCount
+        let colorCount = 0;
+        for (let color = 0; color < 4; color++) {
+            const pos = (number - 1) * 2;
+            const count = (this.colors[color] >> pos) & 0b11;
+            if (count > 0) {
+                colorCount++;
+            }
+        }
+        return colorCount >= 3;  // 需要至少3张牌才能组成刻子
+    }
+
+    /**
+     * 检查指定颜色是否能组成顺子
+     * @param color 要检查的颜色
+     * @returns 能组成顺子的起始数字列表
+     */
+    findSequences(color: Color): number[] {
+        const sequences: number[] = [];
+        const pattern = this.colors[color];
+        
+        // 检查每个可能的顺子位置
+        // 每个数字占2位，所以每次移动2位
+        for (let start = 0; start < 11; start++) {
+            // 检查连续的三个数字是否都有牌
+            // 每个数字占2位，所以间隔是2
+            const n1 = (pattern >> (start * 2)) & 0b11;
+            const n2 = (pattern >> ((start + 1) * 2)) & 0b11;
+            const n3 = (pattern >> ((start + 2) * 2)) & 0b11;
+            
+            if (n1 > 0 && n2 > 0 && n3 > 0) {
+                sequences.push(start + 1);
+            }
+        }
+
+        return sequences;
+    }
+
+    /**
+     * 获取指定数字的所有有牌的颜色
+     * @param number 要检查的数字
+     * @returns 有牌的颜色列表
+     */
+    getColorsWithTiles(number: number): Color[] {
+        const colors: Color[] = [];
+        const pos = (number - 1) * 2;
+        
+        for (let color = 0; color < 4; color++) {
+            if ((this.colors[color] >> pos) & 0b11) {
+                colors.push(color as Color);
+            }
+        }
+        
+        return colors;
+    }
+
+    /**
+     * 获取指定颜色的所有有牌的数字
+     * @param color 要检查的颜色
+     * @returns 有牌的数字列表
+     */
+    getNumbersWithTiles(color: Color): number[] {
+        const numbers: number[] = [];
+        
+        for (let number = 1; number <= 13; number++) {
+            const pos = (number - 1) * 2;
+            if ((this.colors[color] >> pos) & 0b11) {
+                numbers.push(number);
+            }
+        }
+        
+        return numbers;
+    }
+
+    /**
+     * 查找指定颜色的所有连续区间（长度>=3）
+     * @param color 要检查的颜色
+     * @returns 连续区间列表，每个区间是一个[起始数字, 结束数字]的数组
+     */
+    findContinuousSequences(color: Color): [number, number][] {
+        const pattern = this.colors[color];
+        const sequences: [number, number][] = [];
+        let start = -1;
+        let current = -1;
+
+        // 遍历所有位置
+        for (let number = 1; number <= 13; number++) {
+            const pos = (number - 1) * 2;
+            const hasTile = (pattern >> pos) & 0b11;
+
+            if (hasTile) {
+                // 如果当前位置有牌
+                if (start === -1) {
+                    // 开始新的连续区间
+                    start = number;
+                }
+                current = number;
+            } else if (start !== -1) {
+                // 当前位置没牌，且之前有连续区间
+                if (current - start + 1 >= 3) {
+                    // 如果区间长度>=3，记录这个区间
+                    sequences.push([start, current]);
+                }
+                start = -1;
+            }
+        }
+
+        // 处理最后一个区间
+        if (start !== -1 && current - start + 1 >= 3) {
+            sequences.push([start, current]);
+        }
+
+        return sequences;
     }
 } 
