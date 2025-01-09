@@ -49,7 +49,7 @@ export class TilePattern {
         // 计算位置和当前数量
         const pos = (number - 1) * 2;  // 每个数字占2位
         const current = (this.colors[color] >> pos) & 0b11;
-        
+
         // 计算新的位值：00->01->11
         let newBits;
         // 使用位运算计算新的位值
@@ -93,12 +93,12 @@ export class TilePattern {
     removeTile(number: number, color: Color, count: number = 1): boolean {
         const pos = (number - 1) * 2;
         const current = (this.colors[color] >> pos) & 0b11;
-        
+
         // 检查是否可以移除
         if (current === 0) return false;  // 没有牌可移除
         if (current === 1 && count > 1) return false;  // 只有一张牌，不能移除两张
-        if(count > 2) return false;  // 移除的数量大于当前数量
-        
+        if (count > 2) return false;  // 移除的数量大于当前数量
+
         // 计算新的位值：11->01->00
         let newBits;
         if (current === 0b11) {  // 两张牌
@@ -111,7 +111,7 @@ export class TilePattern {
         this.colors[color] &= ~(0b11 << pos);
         // 设置新数量
         this.colors[color] |= (newBits << pos);
-        
+
         // 清除缓存
         this.clearCache();
         return true;
@@ -177,7 +177,7 @@ export class TilePattern {
     toString(): string {
         const colorNames = ['RED', 'BLACK', 'BLUE', 'YELLOW'];
         const result: string[] = [];
-        
+
         for (let color = 0; color < 4; color++) {
             const tiles: string[] = [];
             for (let number = 1; number <= 13; number++) {
@@ -190,7 +190,7 @@ export class TilePattern {
                 result.push(`${colorNames[color]}: ${tiles.join(', ')}`);
             }
         }
-        
+
         return result.join('\n');
     }
 
@@ -259,7 +259,7 @@ export class TilePattern {
     isIsomorphic(other: TilePattern): boolean {
         const thisCanonical = this.getCanonicalForm();
         const otherCanonical = other.getCanonicalForm();
-        
+
         // 比较标准形式是否相同
         return thisCanonical.getPattern().every(
             (value, index) => value === otherCanonical.getPattern()[index]
@@ -307,7 +307,7 @@ export class TilePattern {
     findSequences(color: Color): number[] {
         const sequences: number[] = [];
         const pattern = this.colors[color];
-        
+
         // 检查每个可能的顺子位置
         // 每个数字占2位，所以每次移动2位
         for (let start = 0; start < 11; start++) {
@@ -316,7 +316,7 @@ export class TilePattern {
             const n1 = (pattern >> (start * 2)) & 0b11;
             const n2 = (pattern >> ((start + 1) * 2)) & 0b11;
             const n3 = (pattern >> ((start + 2) * 2)) & 0b11;
-            
+
             if (n1 > 0 && n2 > 0 && n3 > 0) {
                 sequences.push(start + 1);
             }
@@ -333,13 +333,13 @@ export class TilePattern {
     getColorsWithTiles(number: number): Color[] {
         const colors: Color[] = [];
         const pos = (number - 1) * 2;
-        
+
         for (let color = 0; color < 4; color++) {
             if ((this.colors[color] >> pos) & 0b11) {
                 colors.push(color as Color);
             }
         }
-        
+
         return colors;
     }
 
@@ -350,14 +350,14 @@ export class TilePattern {
      */
     getNumbersWithTiles(color: Color): number[] {
         const numbers: number[] = [];
-        
+
         for (let number = 1; number <= 13; number++) {
             const pos = (number - 1) * 2;
             if ((this.colors[color] >> pos) & 0b11) {
                 numbers.push(number);
             }
         }
-        
+
         return numbers;
     }
 
@@ -415,34 +415,37 @@ export class TilePattern {
     findAllContinuousSequences(color: Color): [number, number][] {
         const pattern = this.colors[color];
         const sequences: [number, number][] = [];
-        
+
         // 1. 找出所有上升沿和下降沿
-        const edges: Array<{pos: number, type: 'rise' | 'fall', count: number}> = [];
+        const edges: Array<{ pos: number, type: 'rise' | 'fall', count: number }> = [];
         let prevCount = 0;
-        
+
         for (let number = 1; number <= 13; number++) {
             const pos = (number - 1) * 2;
             const count = (pattern >> pos) & 0b11;
             const actualCount = count === 0 ? 0 : count === 1 ? 1 : 2;
-            
+
             if (actualCount > prevCount) {
                 // 上升沿
-                edges.push({pos: number, type: 'rise', count: actualCount - prevCount});
+                edges.push({ pos: number, type: 'rise', count: actualCount - prevCount });
             } else if (actualCount < prevCount) {
                 // 下降沿
-                edges.push({pos: number, type: 'fall', count: prevCount - actualCount});
+                edges.push({ pos: number, type: 'fall', count: prevCount - actualCount });
             }
             prevCount = actualCount;
         }
-        
+        if (prevCount != 0) {
+            edges.push({ pos: 14, type: 'fall', count: prevCount });
+        }
+
         let globalCount = 0;
         // 2. 处理所有上升沿和下降沿对
         for (let i = 0; i < edges.length; i++) {
-            if(edges[i].type !== 'rise') {
+            if (edges[i].type !== 'rise') {
                 globalCount -= edges[i].count;
                 continue;
             }
-            
+
             // 从当前上升沿开始，尝试所有可能的下降沿
             const start = edges[i].pos;
             globalCount += edges[i].count;
@@ -453,30 +456,25 @@ export class TilePattern {
                     currentCount += edges[j].count;
                 } else {
                     currentCount -= edges[j].count;
+
+                    // 如果当前区间长度大于等于3，且是有效的区间（计数大于0）
+                    const end = edges[j].pos;
+                    if (end - start >= 3 && currentCount >= 0) {
+                        sequences.push([start, end - 1]);
+                    }
                 }
-                
-                // 如果当前区间长度大于等于3，且是有效的区间（计数大于0）
-                const end = edges[j].pos;
-                if (end - start >= 2 && currentCount >= 0) {
-                    sequences.push([start, end]);
-                }
-                
                 // 如果计数变为0，结束当前搜索
                 if (currentCount <= 0) break;
             }
         }
-        
-        // 3. 去除被其他区间完全包含的区间
-        return sequences.filter((seq1, i) => 
-            !sequences.some((seq2, j) => 
-                i !== j && 
-                seq2[0] <= seq1[0] && 
-                seq2[1] >= seq1[1] &&
-                (seq2[0] < seq1[0] || seq2[1] > seq1[1])  // 避免完全相同的区间被移除
-            )
-        );
+
+        sequences.sort((a, b) => a[0] === b[0] ? a[1] - b[1] : a[0] - b[0]);
+
+        return sequences;
     }
 
 
+
     
+
 } 

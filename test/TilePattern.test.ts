@@ -57,11 +57,11 @@ describe('TilePattern', () => {
         it('should get and set pattern correctly', () => {
             pattern.addTile(3, Color.RED, 2);
             pattern.addTile(4, Color.BLACK, 1);
-            
+
             const patternData = pattern.getPattern();
             const newPattern = new TilePattern();
             newPattern.setPattern(patternData);
-            
+
             expect(newPattern.getTileCount(3, Color.RED)).toBe(2);
             expect(newPattern.getTileCount(4, Color.BLACK)).toBe(1);
         });
@@ -76,25 +76,25 @@ describe('TilePattern', () => {
             pattern.addTile(3, Color.RED, 2);
             pattern.addTile(4, Color.BLACK, 1);
             pattern.clear();
-            
+
             expect(pattern.getTotalCount()).toBe(0);
         });
 
         it('should count total tiles correctly', () => {
             pattern.addTile(3, Color.RED, 2);
             pattern.addTile(4, Color.BLACK, 1);
-            
+
             expect(pattern.getTotalCount()).toBe(3);
         });
 
         it('should clone pattern correctly', () => {
             pattern.addTile(3, Color.RED, 2);
             pattern.addTile(4, Color.BLACK, 1);
-            
+
             const cloned = pattern.clone();
             expect(cloned.getTileCount(3, Color.RED)).toBe(2);
             expect(cloned.getTileCount(4, Color.BLACK)).toBe(1);
-            
+
             // 确保是深拷贝
             pattern.removeTile(3, Color.RED);
             expect(cloned.getTileCount(3, Color.RED)).toBe(2);
@@ -103,7 +103,7 @@ describe('TilePattern', () => {
         it('should convert to string correctly', () => {
             pattern.addTile(3, Color.RED, 2);
             pattern.addTile(4, Color.RED, 1);
-            
+
             const str = pattern.toString();
             expect(str).toContain('RED');
             expect(str).toContain('3×2');
@@ -242,7 +242,7 @@ describe('TilePattern', () => {
 
             // 结果应该相同
             expect(canonical1.getPattern()).toEqual(canonical2.getPattern());
-            
+
             // 修改牌型应该清除缓存
             pattern.addTile(6, Color.RED);
             const canonical3 = pattern.getCanonicalForm();
@@ -275,20 +275,20 @@ describe('TilePattern', () => {
         it('should clear cache on pattern operations', () => {
             const pattern = new TilePattern();
             pattern.addTile(3, Color.RED);
-            
+
             // 获取初始标准形
             const canonical1 = pattern.getCanonicalForm();
-            
+
             // 各种操作应该清除缓存
             pattern.clear();
             const canonical2 = pattern.getCanonicalForm();
             expect(canonical2.getPattern()).not.toEqual(canonical1.getPattern());
-            
+
             pattern.addTile(1, Color.BLACK);
             const canonical3 = pattern.getCanonicalForm();
             expect(canonical3.getPattern()).not.toEqual(canonical2.getPattern());
-            
-         
+
+
             pattern.setPattern([1, 0, 0, 0]);
             const canonical4 = pattern.getCanonicalForm();
             expect(canonical4.getPattern()).toEqual(canonical3.getPattern());
@@ -314,7 +314,7 @@ describe('TilePattern', () => {
                 pattern.addTile(i, Color.RED);
             }
             expect(pattern.getTotalCount()).toBe(13);
-            
+
             // 验证每个数字都正确添加
             for (let i = 1; i <= 13; i++) {
                 expect(pattern.getTileCount(i, Color.RED)).toBe(1);
@@ -327,7 +327,7 @@ describe('TilePattern', () => {
             pattern.addTile(1, Color.BLACK);
             pattern.addTile(1, Color.BLUE);
             pattern.addTile(1, Color.YELLOW);
-            
+
             expect(pattern.getTileCount(1, Color.RED)).toBe(1);
             expect(pattern.getTileCount(1, Color.BLACK)).toBe(1);
             expect(pattern.getTileCount(1, Color.BLUE)).toBe(1);
@@ -341,10 +341,10 @@ describe('TilePattern', () => {
                     pattern.addTile(number, color as Color, 2);
                 }
             }
-            
+
             // 验证总数
             expect(pattern.getTotalCount()).toBe(13 * 4 * 2);
-            
+
             // 验证toString不会崩溃
             expect(() => pattern.toString()).not.toThrow();
         });
@@ -386,7 +386,7 @@ describe('TilePattern', () => {
             const pattern1 = new TilePattern();
             pattern1.addTile(1, Color.RED);
             pattern1.addTile(2, Color.BLACK);
-            
+
             expect(pattern1.isIsomorphic(pattern1)).toBe(true);
             expect(pattern1.isIsomorphic(pattern1.clone())).toBe(true);
         });
@@ -443,6 +443,134 @@ describe('TilePattern', () => {
 
             // 验证同构性
             expect(pattern1.isIsomorphic(pattern2)).toBe(true);
+        });
+    });
+
+    describe('findAllContinuousSequences', () => {
+        beforeEach(() => {
+            pattern = new TilePattern();
+        });
+
+        test('should find simple sequence', () => {
+            // 1,2,3,4,5 每种牌一张
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED);
+            pattern.addTile(4, Color.RED);
+            pattern.addTile(5, Color.RED);
+
+            const sequences = pattern.findAllContinuousSequences(Color.RED);
+            expect(sequences).toEqual([[1, 5]]);
+        });
+
+        test('should find sequences with one repeated number', () => {
+            // 1,2,3,3,4,5 (3有两张)
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED, 2);  // 两张3
+            pattern.addTile(4, Color.RED);
+            pattern.addTile(5, Color.RED);
+
+            const sequences = pattern.findAllContinuousSequences(Color.RED);
+            expect(sequences).toEqual([[1, 3], [1, 5], [3, 5]]);
+        });
+
+        test('should find sequences with two repeated numbers', () => {
+            // 1,2,3,3,4,4,5 (3和4各两张)
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED, 2);  // 两张3
+            pattern.addTile(4, Color.RED, 2);  // 两张4
+            pattern.addTile(5, Color.RED);
+
+            const sequences = pattern.findAllContinuousSequences(Color.RED);
+            expect(sequences).toEqual([[1, 4], [1, 5], [3, 5]]);
+        });
+
+        test('should handle edge cases', () => {
+            // 11,12,12,13 (12有两张)
+            pattern.addTile(11, Color.RED);
+            pattern.addTile(12, Color.RED, 2);  // 两张12
+            pattern.addTile(13, Color.RED);
+
+            const sequences = pattern.findAllContinuousSequences(Color.RED);
+            expect(sequences).toEqual([[11, 13]]);
+        });
+
+        test('should handle multiple disjoint sequences', () => {
+            // 1,2,3 和 7,7,8,9 (7有两张)
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED);
+            pattern.addTile(7, Color.RED, 2);  // 两张7
+            pattern.addTile(8, Color.RED);
+            pattern.addTile(9, Color.RED);
+
+            const sequences = pattern.findAllContinuousSequences(Color.RED);
+            expect(sequences).toEqual([[1, 3], [7, 9]]);
+        });
+
+        test('should handle sequences with gaps', () => {
+            // 1,2,3,5,6,7 每种牌一张
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED);
+            pattern.addTile(5, Color.RED);
+            pattern.addTile(6, Color.RED);
+            pattern.addTile(7, Color.RED);
+
+            const sequences = pattern.findAllContinuousSequences(Color.RED);
+            expect(sequences).toEqual([[1, 3], [5, 7]]);
+        });
+
+        test('should handle complex overlapping sequences', () => {
+            // 1,2,2,3,3,4,4,5 (2,3,4各两张)
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED, 2);  // 两张2
+            pattern.addTile(3, Color.RED, 2);  // 两张3
+            pattern.addTile(4, Color.RED, 2);  // 两张4
+            pattern.addTile(5, Color.RED);
+
+            const sequences = pattern.findAllContinuousSequences(Color.RED);
+            expect(sequences).toEqual([[1, 4], [1, 5],[2,4], [2, 5]]);
+        });
+
+        test('should not find sequences shorter than 3', () => {
+            // 1,2 每种牌一张
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+
+            const sequences = pattern.findAllContinuousSequences(Color.RED);
+            expect(sequences).toEqual([]);
+        });
+
+        test('should handle empty pattern', () => {
+            const sequences = pattern.findAllContinuousSequences(Color.RED);
+            expect(sequences).toEqual([]);
+        });
+
+        test('should handle sequence with alternating doubles', () => {
+            // 1,2,2,3,4,4,5 (2和4有两张)
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED, 2);  // 两张2
+            pattern.addTile(3, Color.RED);
+            pattern.addTile(4, Color.RED, 2);  // 两张4
+            pattern.addTile(5, Color.RED);
+
+            const sequences = pattern.findAllContinuousSequences(Color.RED);
+            expect(sequences).toEqual([[1, 4], [1, 5], [2, 4], [2, 5]]);
+        });
+
+        test('should handle sequence with consecutive doubles', () => {
+            // 1,2,2,3,3,4,5 (2和3有两张)
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED, 2);  // 两张2
+            pattern.addTile(3, Color.RED, 2);  // 两张3
+            pattern.addTile(4, Color.RED);
+            pattern.addTile(5, Color.RED);
+
+            const sequences = pattern.findAllContinuousSequences(Color.RED);
+            expect(sequences).toEqual([[1, 3], [1, 5], [2, 5]]);
         });
     });
 }); 
