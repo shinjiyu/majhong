@@ -472,7 +472,6 @@ export class TilePattern {
 
         return sequences;
     }
-
     /**
      * 判断一张牌是否可以作为顺子的一部分
      * @param number 牌的数字
@@ -480,16 +479,28 @@ export class TilePattern {
      * @returns 如果这张牌可以作为顺子的一部分，返回true
      */
     isInSequence(number: number, color: Color): boolean {
-        // 检查左边是否有连续的牌
-        const hasLeft = (number > 1 && this.getTileCount(number - 1, color) > 0) ||
-                       (number > 2 && this.getTileCount(number - 2, color) > 0);
-        
-        // 检查右边是否有连续的牌
-        const hasRight = (number < 13 && this.getTileCount(number + 1, color) > 0) ||
-                        (number < 12 && this.getTileCount(number + 2, color) > 0);
-        
-        // 如果左边和右边都有牌，说明这张牌可以作为顺子的一部分
-        return hasLeft && hasRight;
+        // 检查是否可以作为顺子的中间牌
+        if (number > 1 && number < 13 && 
+            this.getTileCount(number - 1, color) > 0 && 
+            this.getTileCount(number + 1, color) > 0) {
+            return true;
+        }
+
+        // 检查是否可以作为顺子的起始牌
+        if (number <= 11 &&
+            this.getTileCount(number + 1, color) > 0 &&
+            this.getTileCount(number + 2, color) > 0) {
+            return true;
+        }
+
+        // 检查是否可以作为顺子的结束牌
+        if (number >= 3 &&
+            this.getTileCount(number - 1, color) > 0 &&
+            this.getTileCount(number - 2, color) > 0) {
+            return true;
+        }
+
+        return false;
     }
 
 

@@ -1,24 +1,20 @@
 import { Color } from "../src/TilePattern";
 import { PatternSolver } from '../src/PatternSolver';
-import { TilePattern } from '../src/TilePattern';
+import { PatternParser } from "../src/PatternParser";
 
 let solver: PatternSolver;
-let pattern: TilePattern;
 
 solver = new PatternSolver();
-pattern = new TilePattern();
 
-pattern.addTile(1, Color.RED);
-pattern.addTile(2, Color.RED);
-pattern.addTile(3, Color.RED);
-pattern.addTile(6, Color.RED);  // 无用牌
-pattern.addTile(4, Color.BLACK, 2);
-pattern.addTile(4, Color.BLUE);
-pattern.addTile(4, Color.YELLOW);
-pattern.addTile(7, Color.BLUE);
-pattern.addTile(8, Color.BLUE);
-pattern.addTile(9, Color.BLUE);
-pattern.addTile(10, Color.BLUE);
+const pattern = PatternParser.fromJSON({
+    name: "测试牌型",
+    tiles: {
+        red: [2, 3, 4, 5],
+        black: [2,5],
+        blue: [2,5],
+        yellow: [2,3,4,5]
+    }
+});
 const solution = solver.solve(pattern);
 console.log('Solution:', JSON.stringify(solution, null, 2));
 console.log('Combinations:', solution.combinations.map(comb => ({
