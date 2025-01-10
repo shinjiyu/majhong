@@ -18,7 +18,6 @@ export class PatternSolver {
     constructor() {
         this.cache = PatternCache.getInstance();
     }
-
     /**
      * 寻找牌型的最高分解法
      */

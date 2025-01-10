@@ -3,6 +3,7 @@ import { Color, TilePattern } from './TilePattern';
 export interface Tile {
     number: number;
     color: Color;
+    isJoker?: boolean | undefined;
 }
 
 export interface Combination {

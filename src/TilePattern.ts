@@ -536,5 +536,4 @@ export class TilePattern {
         // 3. 返回两者中的较大值
         return Math.max(sequenceLength, tripletCount);
     }
-
 } 
