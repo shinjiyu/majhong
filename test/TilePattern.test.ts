@@ -573,4 +573,175 @@ describe('TilePattern', () => {
             expect(sequences).toEqual([[1, 3], [1, 5], [2, 5]]);
         });
     });
+
+    describe('getTileConnectivity', () => {
+        beforeEach(() => {
+            pattern = new TilePattern();
+        });
+
+        test('should return 0 for empty position', () => {
+            expect(pattern.getTileConnectivity(1, Color.RED)).toBe(0);
+        });
+
+        test('should return sequence length for tile in sequence', () => {
+            // 添加一个长度为5的顺子
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED);
+            pattern.addTile(4, Color.RED);
+            pattern.addTile(5, Color.RED);
+
+            // 检查顺子中每个位置的连通值
+            expect(pattern.getTileConnectivity(1, Color.RED)).toBe(5);
+            expect(pattern.getTileConnectivity(3, Color.RED)).toBe(5);
+            expect(pattern.getTileConnectivity(5, Color.RED)).toBe(5);
+        });
+
+        test('should return triplet count for tile in triplet', () => {
+            // 添加一个4张相同数字的组合
+            pattern.addTile(3, Color.RED);
+            pattern.addTile(3, Color.BLACK);
+            pattern.addTile(3, Color.BLUE);
+            pattern.addTile(3, Color.YELLOW);
+
+            // 检查每个颜色位置的连通值
+            expect(pattern.getTileConnectivity(3, Color.RED)).toBe(4);
+            expect(pattern.getTileConnectivity(3, Color.BLACK)).toBe(4);
+            expect(pattern.getTileConnectivity(3, Color.YELLOW)).toBe(4);
+        });
+
+        test('should return max of sequence and triplet length', () => {
+            // 添加一个长度为3的顺子
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED);
+
+            // 3有三张牌，形成刻子
+            pattern.addTile(3, Color.BLACK);
+            pattern.addTile(3, Color.BLUE);
+
+            // 对于红3，它既在顺子中又在刻子中，应返回较大的值
+            expect(pattern.getTileConnectivity(3, Color.RED)).toBe(3);  // max(3, 3)
+            // 对于黑3，它只在刻子中
+            expect(pattern.getTileConnectivity(3, Color.BLACK)).toBe(3);
+        });
+
+        test('should handle overlapping sequences', () => {
+            // 添加重叠的顺子：1,2,2,3,3,4,4,5
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED, 2);
+            pattern.addTile(3, Color.RED, 2);
+            pattern.addTile(4, Color.RED, 2);
+            pattern.addTile(5, Color.RED);
+
+            // 检查重叠位置的连通值
+            expect(pattern.getTileConnectivity(2, Color.RED)).toBe(5);  // 在1-5的顺子中
+            expect(pattern.getTileConnectivity(3, Color.RED)).toBe(5);  // 在1-5的顺子中
+            expect(pattern.getTileConnectivity(4, Color.RED)).toBe(5);  // 在1-5的顺子中
+        });
+
+        test('should handle edge cases', () => {
+            // 测试边界数字
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(13, Color.RED);
+
+            expect(pattern.getTileConnectivity(1, Color.RED)).toBe(2);  // 只能和2连
+            expect(pattern.getTileConnectivity(13, Color.RED)).toBe(1); // 不能和其他牌连
+        });
+
+        test('should handle multiple sequences of same color', () => {
+            // 添加两个不相连的顺子：1,2,3 和 5,6,7
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED);
+            pattern.addTile(5, Color.RED);
+            pattern.addTile(6, Color.RED);
+            pattern.addTile(7, Color.RED);
+
+            expect(pattern.getTileConnectivity(2, Color.RED)).toBe(3);  // 在1-3的顺子中
+            expect(pattern.getTileConnectivity(6, Color.RED)).toBe(3);  // 在5-7的顺子中
+            expect(pattern.getTileConnectivity(4, Color.RED)).toBe(0);  // 不在任何顺子中
+        });
+
+        test('should handle sequences with gaps', () => {
+            // 添加一个带间隔的序列：1,2,3,_,5,6,7
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED);
+            pattern.addTile(5, Color.RED);
+            pattern.addTile(6, Color.RED);
+            pattern.addTile(7, Color.RED);
+
+            expect(pattern.getTileConnectivity(2, Color.RED)).toBe(3);  // 在1-3的顺子中
+            expect(pattern.getTileConnectivity(6, Color.RED)).toBe(3);  // 在5-7的顺子中
+        });
+
+        test('should handle mixed sequence and triplet with gaps', () => {
+            // 添加一个复杂的组合：
+            // 红1,2,3
+            // 红5,黑5,蓝5
+            // 红7,8,9
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED);
+            pattern.addTile(5, Color.RED);
+            pattern.addTile(5, Color.BLACK);
+            pattern.addTile(5, Color.BLUE);
+            pattern.addTile(7, Color.RED);
+            pattern.addTile(8, Color.RED);
+            pattern.addTile(9, Color.RED);
+
+            expect(pattern.getTileConnectivity(2, Color.RED)).toBe(3);   // 在1-3的顺子中
+            expect(pattern.getTileConnectivity(5, Color.RED)).toBe(3);   // 在刻子中
+            expect(pattern.getTileConnectivity(5, Color.BLACK)).toBe(3); // 在刻子中
+            expect(pattern.getTileConnectivity(8, Color.RED)).toBe(3);   // 在7-9的顺子中
+        });
+
+        test('should handle alternating doubles in sequence', () => {
+            // 添加带有交替双张的顺子：1,2,2,3,4,4,5
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED, 2);
+            pattern.addTile(3, Color.RED);
+            pattern.addTile(4, Color.RED, 2);
+            pattern.addTile(5, Color.RED);
+
+            expect(pattern.getTileConnectivity(2, Color.RED)).toBe(5);  // 在1-5的顺子中
+            expect(pattern.getTileConnectivity(3, Color.RED)).toBe(5);  // 在1-5的顺子中
+            expect(pattern.getTileConnectivity(4, Color.RED)).toBe(5);  // 在1-5的顺子中
+        });
+
+        test('should handle consecutive doubles in sequence', () => {
+            // 添加带有连续双张的顺子：1,2,2,3,3,4,5
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED, 2);
+            pattern.addTile(3, Color.RED, 2);
+            pattern.addTile(4, Color.RED);
+            pattern.addTile(5, Color.RED);
+
+            expect(pattern.getTileConnectivity(2, Color.RED)).toBe(5);  // 在1-5的顺子中
+            expect(pattern.getTileConnectivity(3, Color.RED)).toBe(5);  // 在1-5的顺子中
+        });
+
+        test('should handle complex mixed patterns', () => {
+            // 添加一个复杂的混合模式：
+            // 红1,2,3,4 (顺子)
+            // 红4,黑4,蓝4 (刻子)
+            // 红6,7,8 (顺子)
+            pattern.addTile(1, Color.RED);
+            pattern.addTile(2, Color.RED);
+            pattern.addTile(3, Color.RED);
+            pattern.addTile(4, Color.RED);
+            pattern.addTile(4, Color.BLACK);
+            pattern.addTile(4, Color.BLUE);
+            pattern.addTile(6, Color.RED);
+            pattern.addTile(7, Color.RED);
+            pattern.addTile(8, Color.RED);
+
+            expect(pattern.getTileConnectivity(2, Color.RED)).toBe(4);   // 在1-4的顺子中
+            expect(pattern.getTileConnectivity(4, Color.RED)).toBe(4);   // max(4, 3)
+            expect(pattern.getTileConnectivity(4, Color.BLACK)).toBe(3); // 在刻子中
+            expect(pattern.getTileConnectivity(7, Color.RED)).toBe(3);   // 在6-8的顺子中
+        });
+    });
 }); 

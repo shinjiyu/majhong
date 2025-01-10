@@ -366,7 +366,7 @@ export class TilePattern {
      * @param color 要检查的颜色
      * @returns 连续区间列表，每个区间是一个[起始数字, 结束数字]的数组
      */
-    findContinuousSequences(color: Color): [number, number][] {
+    findContinuousSequences(color: Color,minLength:number=3): [number, number][] {
         const pattern = this.colors[color];
         const sequences: [number, number][] = [];
         let start = -1;
@@ -386,7 +386,7 @@ export class TilePattern {
                 current = number;
             } else if (start !== -1) {
                 // 当前位置没牌，且之前有连续区间
-                if (current - start + 1 >= 3) {
+                if (current - start + 1 >= minLength) {
                     // 如果区间长度>=3，记录这个区间
                     sequences.push([start, current]);
                 }
@@ -395,7 +395,7 @@ export class TilePattern {
         }
 
         // 处理最后一个区间
-        if (start !== -1 && current - start + 1 >= 3) {
+        if (start !== -1 && current - start + 1 >= minLength) {
             sequences.push([start, current]);
         }
 
@@ -503,8 +503,38 @@ export class TilePattern {
         return false;
     }
 
+    /**
+     * 获取指定位置的最大连通值
+     * 这个值是该位置的牌所在的最长顺子长度和所在刻子大小的最大值
+     * @param number 牌的数字
+     * @param color 牌的颜色
+     * @returns 最大连通值，如果该位置没有牌则返回0
+     */
+    getTileConnectivity(number: number, color: Color): number {
+        // 如果该位置没有牌，返回0
+        if (this.getTileCount(number, color) === 0) {
+            return 0;
+        }
 
+        // 1. 计算顺子连通值
+        let sequenceLength = 0;
+        const sequences = this.findContinuousSequences(color,0);
+        for (const [start, end] of sequences) {
+            if (number >= start && number <= end) {
+                sequenceLength = Math.max(sequenceLength, end - start + 1);
+            }
+        }
 
-    
+        // 2. 计算刻子连通值
+        let tripletCount = 0;
+        for (let c = 0; c < 4; c++) {
+            if (this.getTileCount(number, c as Color) > 0) {
+                tripletCount++;
+            }
+        }
+
+        // 3. 返回两者中的较大值
+        return Math.max(sequenceLength, tripletCount);
+    }
 
 } 

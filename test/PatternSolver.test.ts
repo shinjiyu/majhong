@@ -1,3 +1,4 @@
+import { PatternCache } from '../src/PatternCache';
 import { PatternSolver } from '../src/PatternSolver';
 import { TilePattern } from '../src/TilePattern';
 import { Color } from '../src/TilePattern';
@@ -9,6 +10,7 @@ describe('PatternSolver', () => {
     beforeEach(() => {
         solver = new PatternSolver();
         pattern = new TilePattern();
+        PatternCache.getInstance().initialize();
     });
 
     test('空牌型应该返回0分', () => {
