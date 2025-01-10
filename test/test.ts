@@ -23,25 +23,32 @@ const testCases = [
         tiles: {
             red: [2, 3, 4, 5],
             black: [2, 5],
-            blue: [2, 5], 
+            blue: [2, 5],
             yellow: [2, 3, 4, 5]
         }
     },
     {
-        name: "测试用例2", 
+        name: "测试用例2",
         tiles: {
-            red: [1, 2, 3],
-            black: [1, 2, 3],
-            blue: [1, 2, 3],
-            yellow: []
+            red: [1],
+            black: [1, 1],
+            blue: [1, 1],
+            yellow: [1]
         }
     },
 ];
 
 for (const testCase of testCases) {
     console.log(`\n测试用例: ${testCase.name}`);
+    const startTime = process.hrtime();
+    
     const pattern = PatternParser.fromJSON(testCase);
     const solution = solver.solve(pattern);
+    
+    const endTime = process.hrtime(startTime);
+    const executionTime = (endTime[0] * 1000 + endTime[1] / 1000000).toFixed(2);
+    
+    console.log(`计算时间: ${executionTime}ms`);
     console.log('Solution:', JSON.stringify(solution, null, 2));
     console.log('Combinations:', solution.combinations.map(comb => ({
         type: comb.type,
@@ -51,5 +58,3 @@ for (const testCase of testCases) {
         }))
     })));
 }
-
-

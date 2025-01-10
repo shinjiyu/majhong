@@ -31,7 +31,7 @@ export class PatternSolver {
 
         // 2. 按连通性分割成子块
         const components = PatternPreprocessor.splitByConnectivity(preprocessed);
-        
+
         // 3. 对每个子块求解
         const componentSolutions = components.map((component: TilePattern) => {
             // 3.1 转换为标准型
@@ -59,10 +59,10 @@ export class PatternSolver {
 
         // 如果缓存未命中，计算解决方案
         const solution = this.calculateStandardFormSolution(pattern);
-        
+
         // 将结果存入缓存
         this.cache.set(pattern, solution);
-        
+
         return solution;
     }
 
@@ -73,7 +73,7 @@ export class PatternSolver {
     private calculateStandardFormSolution(pattern: TilePattern): Solution {
         // 1. 找出所有可能的顺子
         const sequences = this.findAllSequences(pattern);
-        
+
         // 2. 找出所有可能的刻子（包括特殊情况）
         const triplets = this.findAllTriplets(pattern);
 
@@ -119,15 +119,27 @@ export class PatternSolver {
                 if (colors.length === 4) {
                     for (let i = 0; i < colors.length; i++) {
                         const color = colors[i];
-                        if (pattern.isInSequence(number, color)) {
+                        if (pattern.isInSequence(number, color) && pattern.getTileCount(number, color) < 2) {
                             // 如果这张牌可以作为顺子的一部分，用其他三张牌组成刻子
                             const otherColors = colors.filter((_, index) => index !== i);
                             triplets.push({
                                 type: 'triplet',
                                 tiles: otherColors.map(c => ({ number, color: c }))
                             });
+                        }else{
+                            // 如果其他三种颜色的牌数量之和大于4，也可以用其他三张牌组成刻子
+                            const otherColors = colors.filter((_, index) => index !== i);
+                            const otherTotalCount = otherColors.reduce((sum, c) => sum + pattern.getTileCount(number, c), 0);
+                            if (otherTotalCount > 4) {
+                                triplets.push({
+                                    type: 'triplet',
+                                    tiles: otherColors.map(c => ({ number, color: c }))
+                                });
+                            }
                         }
                     }
+
+
                 }
             }
         }
@@ -152,10 +164,10 @@ export class PatternSolver {
 
             // 2. 对剩余的牌进行标准化
             const standardForm = StandardForm.fromPattern(remainingPattern);
-            
+
             // 3. 递归求解剩余的牌
-            const subSolution = remainingPattern.getTotalCount() > 0 ? 
-                this.solveStandardForm(standardForm.pattern) : 
+            const subSolution = remainingPattern.getTotalCount() > 0 ?
+                this.solveStandardForm(standardForm.pattern) :
                 { score: 0, combinations: [] };
 
             // 将子解的组合还原回原始牌型

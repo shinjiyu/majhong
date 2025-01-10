@@ -599,47 +599,6 @@
         }
       ]
     },
-    "0,0,21,21": {
-      "score": 12,
-      "combinations": [
-        {
-          "type": "sequence",
-          "tiles": [
-            {
-              "number": 1,
-              "color": 0
-            },
-            {
-              "number": 2,
-              "color": 0
-            },
-            {
-              "number": 3,
-              "color": 0
-            }
-          ],
-          "score": 6
-        },
-        {
-          "type": "sequence",
-          "tiles": [
-            {
-              "number": 1,
-              "color": 1
-            },
-            {
-              "number": 2,
-              "color": 1
-            },
-            {
-              "number": 3,
-              "color": 1
-            }
-          ],
-          "score": 6
-        }
-      ]
-    },
     "0,1,1,1": {
       "score": 3,
       "combinations": [
@@ -663,9 +622,27 @@
         }
       ]
     },
-    "0,5,5,5": {
-      "score": 9,
+    "1,1,3,3": {
+      "score": 6,
       "combinations": [
+        {
+          "type": "triplet",
+          "tiles": [
+            {
+              "number": 1,
+              "color": 0
+            },
+            {
+              "number": 1,
+              "color": 1
+            },
+            {
+              "number": 1,
+              "color": 3
+            }
+          ],
+          "score": 3
+        },
         {
           "type": "triplet",
           "tiles": [
@@ -683,124 +660,6 @@
             }
           ],
           "score": 3
-        },
-        {
-          "type": "triplet",
-          "tiles": [
-            {
-              "number": 2,
-              "color": 0
-            },
-            {
-              "number": 2,
-              "color": 1
-            },
-            {
-              "number": 2,
-              "color": 2
-            }
-          ],
-          "score": 6
-        }
-      ]
-    },
-    "0,17,17,17": {
-      "score": 12,
-      "combinations": [
-        {
-          "type": "triplet",
-          "tiles": [
-            {
-              "number": 1,
-              "color": 0
-            },
-            {
-              "number": 1,
-              "color": 1
-            },
-            {
-              "number": 1,
-              "color": 2
-            }
-          ],
-          "score": 3
-        },
-        {
-          "type": "triplet",
-          "tiles": [
-            {
-              "number": 3,
-              "color": 0
-            },
-            {
-              "number": 3,
-              "color": 1
-            },
-            {
-              "number": 3,
-              "color": 2
-            }
-          ],
-          "score": 9
-        }
-      ]
-    },
-    "0,21,21,21": {
-      "score": 18,
-      "combinations": [
-        {
-          "type": "sequence",
-          "tiles": [
-            {
-              "number": 1,
-              "color": 0
-            },
-            {
-              "number": 2,
-              "color": 0
-            },
-            {
-              "number": 3,
-              "color": 0
-            }
-          ],
-          "score": 6
-        },
-        {
-          "type": "sequence",
-          "tiles": [
-            {
-              "number": 1,
-              "color": 1
-            },
-            {
-              "number": 2,
-              "color": 1
-            },
-            {
-              "number": 3,
-              "color": 1
-            }
-          ],
-          "score": 6
-        },
-        {
-          "type": "sequence",
-          "tiles": [
-            {
-              "number": 1,
-              "color": 2
-            },
-            {
-              "number": 2,
-              "color": 2
-            },
-            {
-              "number": 3,
-              "color": 2
-            }
-          ],
-          "score": 6
         }
       ]
     }
@@ -808,108 +667,96 @@
   "stats": {
     "0,0,65,65": {
       "hits": 1,
-      "lastAccessed": 1736424717245
+      "lastAccessed": 1736481742547
     },
     "0,0,1,1": {
-      "hits": 4,
-      "lastAccessed": 1736424717246
+      "hits": 5,
+      "lastAccessed": 1736481742559
     },
     "0,0,0,5": {
       "hits": 5,
-      "lastAccessed": 1736424717246
+      "lastAccessed": 1736481742548
     },
     "0,16,16,21": {
       "hits": 4,
-      "lastAccessed": 1736424717246
+      "lastAccessed": 1736481742548
     },
     "0,1,1,21": {
       "hits": 4,
-      "lastAccessed": 1736424717246
+      "lastAccessed": 1736481742550
     },
     "0,65,65,85": {
       "hits": 2,
-      "lastAccessed": 1736424717246
+      "lastAccessed": 1736481742547
     },
     "0,0,5,5": {
       "hits": 2,
-      "lastAccessed": 1736424717246
+      "lastAccessed": 1736481742550
     },
     "0,0,21,5": {
       "hits": 3,
-      "lastAccessed": 1736424717247
+      "lastAccessed": 1736481742550
     },
     "16,16,21,21": {
       "hits": 1,
-      "lastAccessed": 1736424717246
+      "lastAccessed": 1736481742548
     },
     "0,0,0,21": {
-      "hits": 6,
-      "lastAccessed": 1736424717254
+      "hits": 4,
+      "lastAccessed": 1736481742550
     },
     "0,64,64,85": {
       "hits": 1,
-      "lastAccessed": 1736424717246
+      "lastAccessed": 1736481742548
     },
     "0,0,20,21": {
       "hits": 3,
-      "lastAccessed": 1736424717246
+      "lastAccessed": 1736481742550
     },
     "0,0,20,85": {
       "hits": 2,
-      "lastAccessed": 1736424717247
+      "lastAccessed": 1736481742550
     },
     "0,0,21,84": {
       "hits": 2,
-      "lastAccessed": 1736424717247
+      "lastAccessed": 1736481742550
     },
     "64,64,84,85": {
       "hits": 2,
-      "lastAccessed": 1736424717246
+      "lastAccessed": 1736481742548
     },
     "1,1,21,21": {
       "hits": 1,
-      "lastAccessed": 1736424717246
+      "lastAccessed": 1736481742550
     },
     "0,1,1,85": {
       "hits": 1,
-      "lastAccessed": 1736424717246
+      "lastAccessed": 1736481742550
     },
     "1,1,21,85": {
       "hits": 2,
-      "lastAccessed": 1736424717247
+      "lastAccessed": 1736481742550
     },
     "65,65,85,85": {
-      "hits": 2,
-      "lastAccessed": 1736424984896
-    },
-    "0,0,21,21": {
-      "hits": 3,
-      "lastAccessed": 1736424717254
+      "hits": 1,
+      "lastAccessed": 1736481742550
     },
     "0,1,1,1": {
-      "hits": 4,
-      "lastAccessed": 1736424717254
-    },
-    "0,5,5,5": {
       "hits": 2,
-      "lastAccessed": 1736424717254
+      "lastAccessed": 1736481742559
     },
-    "0,17,17,17": {
+    "1,1,3,3": {
       "hits": 1,
-      "lastAccessed": 1736424717254
-    },
-    "0,21,21,21": {
-      "hits": 2,
-      "lastAccessed": 1736424984904
+      "lastAccessed": 1736481742559
     }
   },
   "hitRateStats": {
-    "totalRequests": 2,
-    "cacheHits": 2,
-    "cacheMisses": 0,
-    "hitRate": 1,
-    "periodStart": 1736424984892,
-    "periodEnd": 1736424984904
+    "totalRequests": 49,
+    "cacheHits": 28,
+    "cacheMisses": 21,
+    "hitRate": 0.5714285714285714,
+    "periodStart": 1736481742544,
+    "periodEnd": 1736481742559
   },
-  "lastSaved": 1736424984907
+  "lastSaved": 1736481742563
 }

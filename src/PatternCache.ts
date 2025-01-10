@@ -89,7 +89,7 @@ export class PatternCache {
      */
     initialize(): void {
         if (this.isInitialized) return;
-        this.loadCache();
+        //this.loadCache();
         this.isInitialized = true;
     }
 
