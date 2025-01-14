@@ -3,6 +3,8 @@ export { TilePattern } from './TilePattern';
 export { PatternSolver } from './PatternSolver';
 export { PatternSolverWithJoker } from './PatternSolverWithJoker';
 export { StandardForm } from './StandardForm';
-export { PatternParser } from './PatternParser';
+export { PatternParser , PatternInput} from './PatternParser';
 export { PatternPreprocessor } from './PatternPreprocessor';
-export { Solution } from './types'; 
+
+// 导出类型定义
+export type { Solution, ScoredCombination } from './types'; 
