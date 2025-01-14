@@ -8,6 +8,7 @@ async function main() {
     try {
         const cache = PatternCache.getInstance();
         await cache.initialize();
+        cache.clear();
 
         const solver = new PatternSolver();
         const jokerSolver = new PatternSolverWithJoker();
@@ -26,13 +27,13 @@ async function main() {
             {
                 name: "测试用例2",
                 tiles: {
-                    red: [10,11,11,12,12],
-                    black: [10,11,11,12,12],
-                    blue: [10,11,11,12,12],
-                    yellow: [11,11,12,12]
+                    black: [6],
+                    blue: [1, 1, 6, 11],
+                    red: [1, 1, 5, 6, 6, 7, 7, 8, 9, 12],
+                    yellow: [1, 1, 6, 10]
                 },
                 jokerCount: 2
-            },
+            }
         ];
 
         for (const testCase of testCases) {
@@ -59,7 +60,7 @@ async function main() {
 
         // 在所有测试完成后保存缓存并退出
         console.log("\nSaving cache...");
-        await cache.save();
+        //await cache.save();
         console.log("Cache saved.");
         await cache.destroy();
         console.log("Cache destroyed.");

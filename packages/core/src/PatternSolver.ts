@@ -86,7 +86,7 @@ export class PatternSolver {
     private findAllSequences(pattern: TilePattern): Combination[] {
         const sequences: Combination[] = [];
         for (let color = 0; color < 4; color++) {
-            const ranges = pattern.findContinuousSequences(color);
+            const ranges = pattern.findAllContinuousSequences(color);
             for (const [start, end] of ranges) {
                 sequences.push({
                     type: 'sequence',
