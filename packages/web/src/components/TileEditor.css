@@ -1,0 +1,231 @@
+.tile-editor {
+    padding: 30px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.tile-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* 表头样式 */
+.header-row {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.header-label {
+    width: 80px;
+}
+
+.header-numbers {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    width: 100%;
+}
+
+.header-number {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #666;
+}
+
+.color-row {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.color-label {
+    width: 80px;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.color-label.red { color: #d32f2f; }
+.color-label.black { color: #212121; }
+.color-label.blue { color: #1976d2; }
+.color-label.yellow { color: #f57f17; }
+
+.number-inputs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 10px;
+}
+
+.tile-button {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    border: 2px solid;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s;
+}
+
+/* 红色主题 */
+.color-row[data-color="red"] .tile-button {
+    background: #fff5f5;
+    border-color: #ef9a9a;
+    color: #c62828;
+}
+.color-row[data-color="red"] .tile-button:hover {
+    background: #ffebee;
+    border-color: #e57373;
+}
+.color-row[data-color="red"] .tile-button.active {
+    background: #ffcdd2;
+    border-color: #d32f2f;
+}
+
+/* 黑色主题 */
+.color-row[data-color="black"] .tile-button {
+    background: #fafafa;
+    border-color: #9e9e9e;
+    color: #212121;
+}
+.color-row[data-color="black"] .tile-button:hover {
+    background: #f5f5f5;
+    border-color: #757575;
+}
+.color-row[data-color="black"] .tile-button.active {
+    background: #eeeeee;
+    border-color: #424242;
+}
+
+/* 蓝色主题 */
+.color-row[data-color="blue"] .tile-button {
+    background: #e3f2fd;
+    border-color: #64b5f6;
+    color: #1565c0;
+}
+.color-row[data-color="blue"] .tile-button:hover {
+    background: #bbdefb;
+    border-color: #42a5f5;
+}
+.color-row[data-color="blue"] .tile-button.active {
+    background: #90caf9;
+    border-color: #1976d2;
+}
+
+/* 黄色主题 */
+.color-row[data-color="yellow"] .tile-button {
+    background: #fff8e1;
+    border-color: #ffd54f;
+    color: #f57f17;
+}
+.color-row[data-color="yellow"] .tile-button:hover {
+    background: #ffecb3;
+    border-color: #ffca28;
+}
+.color-row[data-color="yellow"] .tile-button.active {
+    background: #ffe082;
+    border-color: #ffa000;
+}
+
+.controls {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    border: 1px solid #e9ecef;
+}
+
+.joker-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.joker-control span {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.joker-button {
+    width: 40px;
+    height: 40px;
+    border: 2px solid #28a745;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #28a745;
+    background: #f8f9fa;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s;
+}
+
+.joker-button:hover {
+    background: #e8f5e9;
+    border-color: #218838;
+}
+
+.buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.buttons button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.buttons button:first-child {
+    background-color: #4caf50;
+    color: white;
+}
+
+.buttons button:nth-child(2) {
+    background-color: #2196f3;
+    color: white;
+}
+
+.buttons button:last-child {
+    background-color: #f44336;
+    color: white;
+}
+
+.buttons button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.buttons button:active {
+    transform: translateY(0);
+} 
