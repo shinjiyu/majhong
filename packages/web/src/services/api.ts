@@ -1,6 +1,6 @@
 import { PatternInput, Solution } from '../types/tile';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = 'http://172.16.14.11:3000/api';
 
 export async function solvePattern(pattern: PatternInput, jokerCount: number): Promise<Solution> {
     const response = await fetch(`${API_BASE_URL}/solve`, {

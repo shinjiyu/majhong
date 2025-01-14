@@ -2,7 +2,8 @@ export type Color = 'red' | 'black' | 'blue' | 'yellow';
 
 export interface Tile {
     number: number;
-    color: Color;
+    color: number;
+    isJoker: boolean;
 }
 
 export interface PatternInput {

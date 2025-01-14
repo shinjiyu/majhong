@@ -137,8 +137,17 @@ export class PatternCache {
 
             // 更新命中率统计
             await this.connection.execute(
-                'INSERT INTO okey101_hit_rate_stats SET ?',
-                this.hitRateStats
+                `INSERT INTO okey101_hit_rate_stats 
+                (total_requests, cache_hits, cache_misses, hit_rate, period_start, period_end) 
+                VALUES (?, ?, ?, ?, ?, ?)`,
+                [
+                    this.hitRateStats.totalRequests,
+                    this.hitRateStats.cacheHits,
+                    this.hitRateStats.cacheMisses,
+                    this.hitRateStats.hitRate,
+                    this.hitRateStats.periodStart,
+                    this.hitRateStats.periodEnd
+                ]
             );
 
             await this.connection.commit();

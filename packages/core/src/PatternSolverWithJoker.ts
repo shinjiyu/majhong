@@ -39,7 +39,7 @@ export class PatternSolverWithJoker extends PatternSolver {
     }
 
     dealSingleJoker(pattern: TilePattern): Solution {
-        let standardForm = StandardForm.fromPattern(pattern);
+        let standardForm = StandardForm.fromPatternForJoker(pattern);
 
         // 尝试从缓存获取结果
         const cacheKey = this.getCacheKey(standardForm.pattern, 1);
@@ -75,7 +75,7 @@ export class PatternSolverWithJoker extends PatternSolver {
     }
 
     dealDoubleJoker(pattern: TilePattern): Solution {
-        let standardForm = StandardForm.fromPattern(pattern);
+        let standardForm = StandardForm.fromPatternForJoker(pattern);
 
         // 尝试从缓存获取结果
         const cacheKey = this.getCacheKey(standardForm.pattern, 2);
