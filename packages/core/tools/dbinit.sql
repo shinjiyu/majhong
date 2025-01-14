@@ -1,7 +1,8 @@
 -- 创建模式缓存表
 CREATE TABLE IF NOT EXISTS okey101_pattern_cache (
     pattern_id VARCHAR(255) PRIMARY KEY,
-    solution JSON NOT NULL,
+    score INT NOT NULL,
+    combinations TEXT NOT NULL,  -- 使用TEXT存储序列化的组合数据
     hits INT DEFAULT 1,
     last_accessed BIGINT,
     joker_count TINYINT DEFAULT 0,

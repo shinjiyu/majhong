@@ -6,7 +6,8 @@ import { ConfigLoader } from './config/DatabaseConfig';
 
 interface PatternCacheRow extends RowDataPacket {
     pattern_id: string;
-    solution: string;
+    score: number;
+    combinations: string;
     hits: number;
     last_accessed: number;
     joker_count: number;
@@ -44,6 +45,8 @@ export class PatternCache {
     private isDirty: boolean;
     private isInitialized: boolean;
     private connection: mysql.Connection | null = null;
+    private syncInterval: NodeJS.Timeout | null = null;
+    private batchInserts: Map<string, {solution: Solution, stats: CacheStats}> = new Map();
     private hitRateStats: HitRateStats = {
         totalRequests: 0,
         cacheHits: 0,
@@ -80,47 +83,72 @@ export class PatternCache {
                 }
             }
 
+            // 启动定期同步
+            this.startPeriodicSync();
+
         } catch (error) {
             console.error('Failed to initialize database connection:', error);
             throw error;
         }
     }
 
-    private resetHitRateStats(): void {
-        this.hitRateStats = {
-            totalRequests: 0,
-            cacheHits: 0,
-            cacheMisses: 0,
-            hitRate: 0,
-            periodStart: Date.now(),
-            periodEnd: Date.now()
-        };
+    private startPeriodicSync() {
+        // 每5分钟同步一次
+        this.syncInterval = setInterval(async () => {
+            if (this.isDirty) {
+                await this.syncBatchInserts();
+            }
+        }, 5 * 60 * 1000);
     }
 
-    private updateHitRateStats(isHit: boolean): void {
-        this.hitRateStats.totalRequests++;
-        if (isHit) {
-            this.hitRateStats.cacheHits++;
-        } else {
-            this.hitRateStats.cacheMisses++;
+    private async syncBatchInserts() {
+        if (!this.connection || this.batchInserts.size === 0) return;
+
+        try {
+            await this.connection.beginTransaction();
+
+            // 批量插入或更新缓存数据
+            const values = [];
+            for (const [id, {solution, stats}] of this.batchInserts.entries()) {
+                values.push([
+                    id,
+                    solution.score,
+                    JSON.stringify(solution.combinations),
+                    stats.hits,
+                    stats.lastAccessed,
+                    stats.jokerCount
+                ]);
+            }
+
+            if (values.length > 0) {
+                await this.connection.query(
+                    `INSERT INTO okey101_pattern_cache 
+                    (pattern_id, score, combinations, hits, last_accessed, joker_count) 
+                    VALUES ? 
+                    ON DUPLICATE KEY UPDATE 
+                    score = VALUES(score),
+                    combinations = VALUES(combinations),
+                    hits = VALUES(hits),
+                    last_accessed = VALUES(last_accessed),
+                    joker_count = VALUES(joker_count)`,
+                    [values]
+                );
+            }
+
+            // 更新命中率统计
+            await this.connection.execute(
+                'INSERT INTO okey101_hit_rate_stats SET ?',
+                this.hitRateStats
+            );
+
+            await this.connection.commit();
+            this.batchInserts.clear();
+            this.isDirty = false;
+
+        } catch (error) {
+            await this.connection.rollback();
+            console.error('Error syncing cache to database:', error);
         }
-        this.hitRateStats.hitRate = this.hitRateStats.cacheHits / this.hitRateStats.totalRequests;
-        this.hitRateStats.periodEnd = Date.now();
-        this.isDirty = true;
-    }
-
-    static getInstance(): PatternCache {
-        if (!PatternCache.instance) {
-            PatternCache.instance = new PatternCache();
-        }
-        return PatternCache.instance;
-    }
-
-    async initialize(): Promise<void> {
-        if (this.isInitialized) return;
-        await this.initDB();
-        await this.loadCache();
-        this.isInitialized = true;
     }
 
     private async loadCache(): Promise<void> {
@@ -130,7 +158,11 @@ export class PatternCache {
             const [rows] = await this.connection.execute<PatternCacheRow[]>('SELECT * FROM okey101_pattern_cache');
             if (Array.isArray(rows)) {
                 for (const row of rows) {
-                    this.cache.set(row.pattern_id, JSON.parse(row.solution));
+                    const solution: Solution = {
+                        score: row.score,
+                        combinations: JSON.parse(row.combinations)
+                    };
+                    this.cache.set(row.pattern_id, solution);
                     this.stats.set(row.pattern_id, {
                         hits: row.hits,
                         lastAccessed: row.last_accessed,
@@ -164,6 +196,41 @@ export class PatternCache {
         }
     }
 
+    set(pattern: TilePattern, solution: Solution, customKey?: string, jokerCount: number = 0): void {
+        if (!this.isInitialized) {
+            throw new Error('Cache not initialized. Call initialize() first.');
+        }
+
+        const id = customKey || pattern.getCanonicalId();
+        
+        if (this.cache.size >= this.maxSize) {
+            this.evictLeastUsed();
+        }
+        
+        this.cache.set(id, solution);
+        const stats = { hits: 1, lastAccessed: Date.now(), jokerCount };
+        this.stats.set(id, stats);
+        this.batchInserts.set(id, { solution, stats });
+        this.isDirty = true;
+    }
+
+    async destroy(): Promise<void> {
+        if (this.syncInterval) {
+            clearInterval(this.syncInterval);
+        }
+
+        if (this.isDirty) {
+            await this.syncBatchInserts();
+        }
+
+        if (this.connection) {
+            await this.connection.end();
+            this.connection = null;
+        }
+
+        this.isInitialized = false;
+    }
+
     get(pattern: TilePattern, customKey?: string, jokerCount: number = 0): Solution | undefined {
         if (!this.isInitialized) {
             throw new Error('Cache not initialized. Call initialize() first.');
@@ -183,22 +250,6 @@ export class PatternCache {
         }
         
         return solution;
-    }
-
-    set(pattern: TilePattern, solution: Solution, customKey?: string, jokerCount: number = 0): void {
-        if (!this.isInitialized) {
-            throw new Error('Cache not initialized. Call initialize() first.');
-        }
-
-        const id = customKey || pattern.getCanonicalId();
-        
-        if (this.cache.size >= this.maxSize) {
-            this.evictLeastUsed();
-        }
-        
-        this.cache.set(id, solution);
-        this.stats.set(id, { hits: 1, lastAccessed: Date.now(), jokerCount });
-        this.isDirty = true;
     }
 
     private evictLeastUsed(): void {
@@ -294,16 +345,6 @@ export class PatternCache {
         return this.cache.size;
     }
 
-    async destroy(): Promise<void> {
-        if (this.isDirty) {
-            await this.save();
-        }
-        if (this.connection) {
-            await this.connection.end();
-        }
-        PatternCache.instance = undefined;
-    }
-
     getHitRateStats(): HitRateStats {
         if (!this.isInitialized) {
             throw new Error('Cache not initialized. Call initialize() first.');
@@ -334,6 +375,43 @@ export class PatternCache {
             cacheSize: this.cache.size,
             maxSize: this.maxSize,
             itemStats: new Map(this.stats)
+        };
+    }
+
+    private updateHitRateStats(isHit: boolean): void {
+        this.hitRateStats.totalRequests++;
+        if (isHit) {
+            this.hitRateStats.cacheHits++;
+        } else {
+            this.hitRateStats.cacheMisses++;
+        }
+        this.hitRateStats.hitRate = this.hitRateStats.cacheHits / this.hitRateStats.totalRequests;
+        this.hitRateStats.periodEnd = Date.now();
+        this.isDirty = true;
+    }
+
+    static getInstance(): PatternCache {
+        if (!PatternCache.instance) {
+            PatternCache.instance = new PatternCache();
+        }
+        return PatternCache.instance;
+    }
+
+    async initialize(): Promise<void> {
+        if (this.isInitialized) return;
+        await this.initDB();
+        await this.loadCache();
+        this.isInitialized = true;
+    }
+
+    private resetHitRateStats(): void {
+        this.hitRateStats = {
+            totalRequests: 0,
+            cacheHits: 0,
+            cacheMisses: 0,
+            hitRate: 0,
+            periodStart: Date.now(),
+            periodEnd: Date.now()
         };
     }
 }
