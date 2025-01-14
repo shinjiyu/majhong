@@ -27,4 +27,8 @@ npm-debug.log*
 .env.*.local
 
 # Test coverage
-coverage/ 
+coverage/
+
+# Config files
+config/database.json
+config/*.json

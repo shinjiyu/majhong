@@ -1,5 +1,5 @@
 import { PatternSolver, Solution } from "./PatternSolver";
-import { Combination } from "./StandardForm";
+import { Combination, StandardForm } from "./StandardForm";
 import { Color, TilePattern } from "./TilePattern";
 
 export class PatternSolverWithJoker extends PatternSolver {
@@ -7,45 +7,98 @@ export class PatternSolverWithJoker extends PatternSolver {
         super();
     }
 
-    solveWithJoker(pattern: TilePattern, jokerCount: 0 | 1 | 2): Solution {
-
-        if (jokerCount === 0) {
-            return this.solve(pattern);
-        } else if (jokerCount === 1) {
-            return this.dealSingleJoker(pattern);
-        } else if (jokerCount === 2) {
-            return this.dealDoubleJoker(pattern);
-        }
-        return {
-            score: 0,
-            combinations: []
-        };
+    /**
+     * 生成带有癞子数量的缓存键
+     * @private
+     */
+    private getCacheKey(pattern: TilePattern, jokerCount: number): string {
+        return `${pattern.getCanonicalId()}_joker${jokerCount}`;
     }
 
+    solveWithJoker(pattern: TilePattern, jokerCount: 0 | 1 | 2): Solution {
+        if (jokerCount === 0) {
+            return this.solve(pattern);
+        }
+
+        if (jokerCount === 1) {
+            return this.dealSingleJoker(pattern);
+        } else {
+            return this.dealDoubleJoker(pattern);
+        }
+    }
 
     dealSingleJoker(pattern: TilePattern): Solution {
-        let sequenceCombinations = this.getJokerSequenceCombinations(pattern, 1, 3);
-        let tripletCombinations = this.getJokerTripletCombinations(pattern, 1, 3);
+        let standardForm = StandardForm.fromPattern(pattern);
+
+        // 尝试从缓存获取结果
+        const cacheKey = this.getCacheKey(standardForm.pattern, 1);
+        const cachedSolution = this.cache.get(standardForm.pattern, cacheKey);
+        if (cachedSolution) {
+            return this.restoreSolution(cachedSolution, standardForm);
+        }
+
+        let sequenceCombinations = this.getJokerSequenceCombinations(standardForm.pattern, 1, 3);
+        let tripletCombinations = this.getJokerTripletCombinations(standardForm.pattern, 1, 3);
 
         this.adjustJokerSequence(sequenceCombinations);
 
         let combinations = [...sequenceCombinations, ...tripletCombinations];
 
-        return this.findBestSolution(combinations, pattern, this.solve.bind(this));
+        const solution = this.findBestSolution(combinations, standardForm.pattern, this.solve.bind(this));
+        
+        // 将结果存入缓存（存储标准型的解）
+        const standardSolution = {
+            score: solution.score,
+            combinations: solution.combinations.map(comb => ({
+                ...comb,
+                tiles: comb.tiles.map(tile => ({
+                    ...tile,
+                    number: ((tile.number - standardForm.numberOffset - 1 + 13) % 13) + 1,
+                    color: standardForm.colorMapping[tile.color]
+                }))
+            }))
+        };
+        this.cache.set(standardForm.pattern, standardSolution, cacheKey);
+        
+        return this.restoreSolution(solution, standardForm);
     }
 
-
     dealDoubleJoker(pattern: TilePattern): Solution {
+        let standardForm = StandardForm.fromPattern(pattern);
 
-        let solution1 = this.findBestSolutionWithTwoJokersTogether(pattern);
-        let solution2 = this.findBestSolutionWithTwoJokersSeparately(pattern);
+        // 尝试从缓存获取结果
+        const cacheKey = this.getCacheKey(standardForm.pattern, 2);
+        const cachedSolution = this.cache.get(standardForm.pattern, cacheKey);
+        if (cachedSolution) {
+            return this.restoreSolution(cachedSolution, standardForm);
+        }
+
+        let solution1 = this.findBestSolutionWithTwoJokersTogether(standardForm.pattern);
+        let solution2 = this.findBestSolutionWithTwoJokersSeparately(standardForm.pattern);
 
         if (solution1.score === solution2.score) {
             const solution1TileCount = solution1.combinations.reduce((sum, comb) => sum + comb.tiles.length, 0);
             const solution2TileCount = solution2.combinations.reduce((sum, comb) => sum + comb.tiles.length, 0);
-            return solution1TileCount >= solution2TileCount ? solution1 : solution2;
+            solution1 = solution1TileCount >= solution2TileCount ? solution1 : solution2;
+        } else {
+            solution1 = solution1.score > solution2.score ? solution1 : solution2;
         }
-        return solution1.score > solution2.score ? solution1 : solution2;
+
+        // 将结果存入缓存（存储标准型的解）
+        const standardSolution = {
+            score: solution1.score,
+            combinations: solution1.combinations.map(comb => ({
+                ...comb,
+                tiles: comb.tiles.map(tile => ({
+                    ...tile,
+                    number: ((tile.number - standardForm.numberOffset - 1 + 13) % 13) + 1,
+                    color: standardForm.colorMapping[tile.color]
+                }))
+            }))
+        };
+        this.cache.set(standardForm.pattern, standardSolution, cacheKey);
+
+        return this.restoreSolution(solution1, standardForm);
     }
 
     /**
@@ -75,7 +128,6 @@ export class PatternSolverWithJoker extends PatternSolver {
 
         return this.findBestSolution([...sequenceCombinations, ...tripletCombinations], pattern, this.dealSingleJoker.bind(this));
     }
-
 
     private findBestSolution(combinations: Combination[], pattern: TilePattern, solver: (pattern: TilePattern) => Solution) {
         let bestSolution: Solution = {
@@ -120,12 +172,9 @@ export class PatternSolverWithJoker extends PatternSolver {
         return bestSolution;
     }
 
-
-
     getJokerSequenceCombinations(pattern: TilePattern, jokerCount: 1 | 2, minConnectivity: number): Combination[] {
         //get series with joker
         const combinations: Combination[] = [];
-
 
         let start = 0;
         // 遍历所有颜色
@@ -229,9 +278,7 @@ export class PatternSolverWithJoker extends PatternSolver {
             // TODO: 处理每个区间的逻辑
         }
         return combinations;
-
     }
-
 
     getJokerTripletCombinations(pattern: TilePattern, jokerCount: 1 | 2, minConnectivity: number): Combination[] {
         let combinations: Combination[] = [];
@@ -338,7 +385,6 @@ export class PatternSolverWithJoker extends PatternSolver {
         }
         return combinations;
     }
-
 
     adjustJokerSequence(combinations: Combination[]) {
         combinations.forEach(comb => {

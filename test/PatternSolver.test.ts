@@ -7,10 +7,10 @@ describe('PatternSolver', () => {
     let solver: PatternSolver;
     let pattern: TilePattern;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         solver = new PatternSolver();
         pattern = new TilePattern();
-        PatternCache.getInstance().initialize();
+        await PatternCache.getInstance().initialize();
     });
 
     test('空牌型应该返回0分', () => {

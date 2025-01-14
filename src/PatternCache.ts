@@ -1,7 +1,24 @@
 import { TilePattern } from './TilePattern';
 import type { Solution } from './PatternSolver';
-import * as fs from 'fs';
-import * as path from 'path';
+import mysql from 'mysql2/promise';
+import { RowDataPacket } from 'mysql2';
+import { ConfigLoader } from './config/DatabaseConfig';
+
+interface PatternCacheRow extends RowDataPacket {
+    pattern_id: string;
+    solution: string;
+    hits: number;
+    last_accessed: number;
+}
+
+interface HitRateStatsRow extends RowDataPacket {
+    total_requests: number;
+    cache_hits: number;
+    cache_misses: number;
+    hit_rate: number;
+    period_start: number;
+    period_end: number;
+}
 
 export interface CacheStats {
     hits: number;
@@ -17,22 +34,14 @@ export interface HitRateStats {
     periodEnd: number;
 }
 
-interface SerializedCache {
-    patterns: { [key: string]: Solution };
-    stats: { [key: string]: CacheStats };
-    hitRateStats: HitRateStats;
-    lastSaved: number;
-}
-
 export class PatternCache {
     private static instance: PatternCache | undefined;
     private cache: Map<string, Solution>;
     private stats: Map<string, CacheStats>;
     private maxSize: number;
-    private cacheFile: string;
     private isDirty: boolean;
-    private lastSaved: number;
     private isInitialized: boolean;
+    private connection: mysql.Connection | null = null;
     private hitRateStats: HitRateStats = {
         totalRequests: 0,
         cacheHits: 0,
@@ -46,11 +55,33 @@ export class PatternCache {
         this.cache = new Map();
         this.stats = new Map();
         this.maxSize = maxSize;
-        this.cacheFile = path.join(process.cwd(), 'pattern_cache.json');
         this.isDirty = false;
-        this.lastSaved = Date.now();
         this.isInitialized = false;
         this.resetHitRateStats();
+    }
+
+    private async initDB() {
+        try {
+            const config = ConfigLoader.getInstance().getDatabaseConfig();
+            this.connection = await mysql.createConnection(config);
+
+            // 读取并执行初始化SQL文件
+            const fs = require('fs');
+            const path = require('path');
+            const initSQL = fs.readFileSync(path.join(__dirname, '../tools/dbinit.sql'), 'utf8');
+            
+            // 分割SQL语句并执行
+            const statements = initSQL.split(';').filter((stmt: string) => stmt.trim());
+            for (const statement of statements) {
+                if (statement.trim()) {
+                    await this.connection.execute(statement);
+                }
+            }
+
+        } catch (error) {
+            console.error('Failed to initialize database connection:', error);
+            throw error;
+        }
     }
 
     private resetHitRateStats(): void {
@@ -83,76 +114,64 @@ export class PatternCache {
         return PatternCache.instance;
     }
 
-    /**
-     * 初始化缓存，加载持久化数据
-     * 这个方法应该在应用启动时显式调用
-     */
-    initialize(): void {
+    async initialize(): Promise<void> {
         if (this.isInitialized) return;
-        this.loadCache();
+        await this.initDB();
+        await this.loadCache();
         this.isInitialized = true;
     }
 
-    private loadCache(): void {
-        try {
-            if (fs.existsSync(this.cacheFile)) {
-                const data = fs.readFileSync(this.cacheFile, 'utf8');
-                const serialized: SerializedCache = JSON.parse(data);
-                
-                // 恢复缓存数据
-                this.cache = new Map(Object.entries(serialized.patterns));
-                this.stats = new Map(Object.entries(serialized.stats));
-                this.hitRateStats = serialized.hitRateStats || this.hitRateStats;
-                this.lastSaved = serialized.lastSaved;
+    private async loadCache(): Promise<void> {
+        if (!this.connection) return;
 
-                console.log(`Loaded ${this.cache.size} patterns from cache file`);
-                console.log(`Current hit rate: ${(this.hitRateStats.hitRate * 100).toFixed(2)}%`);
+        try {
+            const [rows] = await this.connection.execute<PatternCacheRow[]>('SELECT * FROM okey101_pattern_cache');
+            if (Array.isArray(rows)) {
+                for (const row of rows) {
+                    this.cache.set(row.pattern_id, JSON.parse(row.solution));
+                    this.stats.set(row.pattern_id, {
+                        hits: row.hits,
+                        lastAccessed: row.last_accessed
+                    });
+                }
             }
+
+            const [statsRows] = await this.connection.execute<HitRateStatsRow[]>(
+                'SELECT * FROM okey101_hit_rate_stats ORDER BY id DESC LIMIT 1'
+            );
+            if (Array.isArray(statsRows) && statsRows.length > 0) {
+                const row = statsRows[0];
+                this.hitRateStats = {
+                    totalRequests: row.total_requests,
+                    cacheHits: row.cache_hits,
+                    cacheMisses: row.cache_misses,
+                    hitRate: row.hit_rate,
+                    periodStart: row.period_start,
+                    periodEnd: row.period_end
+                };
+            }
+
+            console.log(`Loaded ${this.cache.size} patterns from database`);
+            console.log(`Current hit rate: ${(this.hitRateStats.hitRate * 100).toFixed(2)}%`);
         } catch (error) {
-            console.error('Error loading cache:', error);
+            console.error('Error loading cache from database:', error);
             this.cache.clear();
             this.stats.clear();
             this.resetHitRateStats();
         }
     }
 
-    private saveCache(): void {
-        if (!this.isDirty) return;
-
-        try {
-            const serialized: SerializedCache = {
-                patterns: Object.fromEntries(this.cache),
-                stats: Object.fromEntries(this.stats),
-                hitRateStats: this.hitRateStats,
-                lastSaved: Date.now()
-            };
-
-            const tempFile = `${this.cacheFile}.tmp`;
-            fs.writeFileSync(tempFile, JSON.stringify(serialized, null, 2));
-            fs.renameSync(tempFile, this.cacheFile);
-            
-            this.lastSaved = Date.now();
-            this.isDirty = false;
-            console.log(`Saved ${this.cache.size} patterns to cache file`);
-            console.log(`Current hit rate: ${(this.hitRateStats.hitRate * 100).toFixed(2)}%`);
-        } catch (error) {
-            console.error('Error saving cache:', error);
-        }
-    }
-
-    get(pattern: TilePattern): Solution | undefined {
+    get(pattern: TilePattern, customKey?: string): Solution | undefined {
         if (!this.isInitialized) {
             throw new Error('Cache not initialized. Call initialize() first.');
         }
 
-        const id = pattern.getCanonicalId();
+        const id = customKey || pattern.getCanonicalId();
         const solution = this.cache.get(id);
         
-        // 更新命中统计
         this.updateHitRateStats(!!solution);
         
         if (solution) {
-            // 更新访问统计
             const stats = this.stats.get(id) || { hits: 0, lastAccessed: 0 };
             stats.hits++;
             stats.lastAccessed = Date.now();
@@ -163,12 +182,12 @@ export class PatternCache {
         return solution;
     }
 
-    set(pattern: TilePattern, solution: Solution): void {
+    set(pattern: TilePattern, solution: Solution, customKey?: string): void {
         if (!this.isInitialized) {
             throw new Error('Cache not initialized. Call initialize() first.');
         }
 
-        const id = pattern.getCanonicalId();
+        const id = customKey || pattern.getCanonicalId();
         
         if (this.cache.size >= this.maxSize) {
             this.evictLeastUsed();
@@ -184,7 +203,6 @@ export class PatternCache {
         let leastUsedScore = Infinity;
         
         for (const [id, stats] of this.stats.entries()) {
-            // 计算使用分数：命中次数 / 距离上次访问的时间
             const timeDiff = Date.now() - stats.lastAccessed;
             const score = stats.hits / (timeDiff + 1);
             
@@ -208,12 +226,57 @@ export class PatternCache {
         return new Map(this.stats);
     }
 
-    clear(): void {
+    async save(): Promise<void> {
+        if (!this.isInitialized || !this.isDirty || !this.connection) {
+            return;
+        }
+
+        try {
+            // Begin transaction
+            await this.connection.beginTransaction();
+
+            // Clear existing data
+            await this.connection.execute('TRUNCATE TABLE okey101_pattern_cache');
+            await this.connection.execute('TRUNCATE TABLE okey101_hit_rate_stats');
+
+            // Insert all patterns
+            for (const [id, solution] of this.cache.entries()) {
+                const stats = this.stats.get(id);
+                if (stats) {
+                    await this.connection.execute(
+                        'INSERT INTO okey101_pattern_cache (pattern_id, solution, hits, last_accessed) VALUES (?, ?, ?, ?)',
+                        [id, JSON.stringify(solution), stats.hits, stats.lastAccessed]
+                    );
+                }
+            }
+
+            // Save hit rate stats
+            await this.connection.execute(
+                'INSERT INTO okey101_hit_rate_stats SET ?',
+                [this.hitRateStats]
+            );
+
+            // Commit transaction
+            await this.connection.commit();
+            this.isDirty = false;
+
+        } catch (error) {
+            if (this.connection) {
+                await this.connection.rollback();
+            }
+            console.error('Failed to save cache to database:', error);
+            throw error;
+        }
+    }
+
+    async clear(): Promise<void> {
         if (!this.isInitialized) {
             throw new Error('Cache not initialized. Call initialize() first.');
         }
+        
         this.cache.clear();
         this.stats.clear();
+        this.resetHitRateStats();
         this.isDirty = true;
     }
 
@@ -221,41 +284,16 @@ export class PatternCache {
         return this.cache.size;
     }
 
-    /**
-     * 手动保存缓存到文件
-     * 这个方法应该在合适的时机调用，比如：
-     * 1. 程序正常退出前
-     * 2. 处理完一批数据后
-     * 3. 收到保存信号时
-     */
-    save(): void {
-        if (!this.isInitialized) {
-            throw new Error('Cache not initialized. Call initialize() first.');
+    async destroy(): Promise<void> {
+        if (this.isDirty) {
+            await this.save();
         }
-        this.saveCache();
-    }
-
-    /**
-     * 获取缓存文件路径
-     */
-    getCacheFilePath(): string {
-        return this.cacheFile;
-    }
-
-    /**
-     * 销毁实例时的清理工作
-     * 这个方法应该在程序退出前调用
-     */
-    destroy(): void {
-        if (this.isInitialized) {
-            this.saveCache();
+        if (this.connection) {
+            await this.connection.end();
         }
         PatternCache.instance = undefined;
     }
 
-    /**
-     * 获取缓存命中率统计信息
-     */
     getHitRateStats(): HitRateStats {
         if (!this.isInitialized) {
             throw new Error('Cache not initialized. Call initialize() first.');
@@ -263,20 +301,15 @@ export class PatternCache {
         return { ...this.hitRateStats };
     }
 
-    /**
-     * 重置命中率统计
-     */
     resetStats(): void {
         if (!this.isInitialized) {
             throw new Error('Cache not initialized. Call initialize() first.');
         }
+        
         this.resetHitRateStats();
         this.isDirty = true;
     }
 
-    /**
-     * 获取详细的缓存统计信息
-     */
     getDetailedStats(): {
         hitRate: HitRateStats;
         cacheSize: number;
@@ -293,4 +326,4 @@ export class PatternCache {
             itemStats: new Map(this.stats)
         };
     }
-} 
+}

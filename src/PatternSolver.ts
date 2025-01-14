@@ -13,7 +13,7 @@ export interface Solution {
 }
 
 export class PatternSolver {
-    private cache: PatternCache;
+    protected cache: PatternCache;
 
     constructor() {
         this.cache = PatternCache.getInstance();
@@ -204,7 +204,7 @@ export class PatternSolver {
     /**
      * 还原标准型的解为原始牌型的解
      */
-    private restoreSolution(solution: Solution, standardForm: StandardForm): Solution {
+    protected restoreSolution(solution: Solution, standardForm: StandardForm): Solution {
         const restoredCombinations = solution.combinations.map(combination => {
             const restored = standardForm.restoreCombination(combination);
             return {

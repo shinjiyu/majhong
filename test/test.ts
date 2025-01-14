@@ -5,7 +5,7 @@ import { PatternCache } from "../src/PatternCache";
 import { PatternSolverWithJoker } from "../src/PatternSolverWithJoker";
 
 const cache = PatternCache.getInstance();
-cache.initialize();
+await cache.initialize();
 
 process.on('beforeExit', () => {
     console.log("Saving cache...");
