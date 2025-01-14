@@ -12,7 +12,7 @@ export class PatternSolverWithJoker extends PatternSolver {
      * @private
      */
     private getCacheKey(pattern: TilePattern, jokerCount: number): string {
-        return `${pattern.getCanonicalId()}_joker${jokerCount}`;
+        return `${pattern.getId()}_joker${jokerCount}`;
     }
 
     solveWithJoker(pattern: TilePattern, jokerCount: 0 | 1 | 2): Solution {

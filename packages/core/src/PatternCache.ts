@@ -136,18 +136,20 @@ export class PatternCache {
             }
 
             // 更新命中率统计
+            const stats = [
+                this.hitRateStats.totalRequests,
+                this.hitRateStats.cacheHits,
+                this.hitRateStats.cacheMisses,
+                this.hitRateStats.hitRate,
+                this.hitRateStats.periodStart,
+                this.hitRateStats.periodEnd
+            ];
+
             await this.connection.execute(
                 `INSERT INTO okey101_hit_rate_stats 
                 (total_requests, cache_hits, cache_misses, hit_rate, period_start, period_end) 
                 VALUES (?, ?, ?, ?, ?, ?)`,
-                [
-                    this.hitRateStats.totalRequests,
-                    this.hitRateStats.cacheHits,
-                    this.hitRateStats.cacheMisses,
-                    this.hitRateStats.hitRate,
-                    this.hitRateStats.periodStart,
-                    this.hitRateStats.periodEnd
-                ]
+                stats
             );
 
             await this.connection.commit();
@@ -210,7 +212,7 @@ export class PatternCache {
             throw new Error('Cache not initialized. Call initialize() first.');
         }
 
-        const id = customKey || pattern.getCanonicalId();
+        const id = customKey || pattern.getId();
         
         if (this.cache.size >= this.maxSize) {
             this.evictLeastUsed();
@@ -221,6 +223,13 @@ export class PatternCache {
         this.stats.set(id, stats);
         this.batchInserts.set(id, { solution, stats });
         this.isDirty = true;
+
+        // 测试模式：立即同步到数据库
+        if (process.env.NODE_ENV === 'development') {
+            this.syncBatchInserts().catch(error => {
+                console.error('Error syncing cache to database:', error);
+            });
+        }
     }
 
     async destroy(): Promise<void> {
@@ -245,7 +254,7 @@ export class PatternCache {
             throw new Error('Cache not initialized. Call initialize() first.');
         }
 
-        const id = customKey || pattern.getCanonicalId();
+        const id = customKey || pattern.getId();
         const solution = this.cache.get(id);
         
         this.updateHitRateStats(!!solution);

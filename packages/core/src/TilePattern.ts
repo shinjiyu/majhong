@@ -205,79 +205,17 @@ export class TilePattern {
     }
 
     /**
-     * 获取牌型的标准形式
-     * 标准形式是所有同构牌型中字典序最小的形式
-     * @returns 标准形式的TilePattern实例
-     */
-    getCanonicalForm(): TilePattern {
-        // 如果有缓存，直接返回
-        if (this.canonicalFormCache) {
-            return this.canonicalFormCache.clone();
-        }
-
-        // 1. 找到最小的非零数字
-        let minNumber = 14;
-        for (let color = 0; color < 4; color++) {
-            for (let number = 1; number <= 13; number++) {
-                if (this.getTileCount(number, color as Color) > 0) {
-                    minNumber = Math.min(minNumber, number);
-                }
-            }
-        }
-
-        // 如果没有牌，返回空牌型
-        if (minNumber === 14) {
-            this.canonicalFormCache = new TilePattern();
-            return this.canonicalFormCache.clone();
-        }
-
-        // 2. 创建循环平移后的数组
-        const shift = minNumber - 1;
-        const shiftedColors = this.colors.map(colorPattern => {
-            // 右移shift个数字（每个数字2位）
-            const rightPart = colorPattern >>> (shift * 2);
-            // 左移(13-shift)个数字
-            const leftPart = colorPattern << ((13 - shift) * 2);
-            // 组合，确保高位清零
-            return (rightPart | leftPart) & ((1 << 26) - 1);  // 13个数字共26位
-        });
-
-        // 3. 生成所有可能的颜色排列，找出最小的
-        const sortedColors = [...shiftedColors].sort();
-
-        // 4. 创建新的TilePattern实例并设置标准形
-        this.canonicalFormCache = new TilePattern();
-        this.canonicalFormCache.setPattern(sortedColors);
-        return this.canonicalFormCache.clone();
-    }
-
-    /**
-     * 检查两个牌型是否同构
-     * @param other - 要比较的牌型
-     * @returns 是否同构
-     */
-    isIsomorphic(other: TilePattern): boolean {
-        const thisCanonical = this.getCanonicalForm();
-        const otherCanonical = other.getCanonicalForm();
-
-        // 比较标准形式是否相同
-        return thisCanonical.getPattern().every(
-            (value, index) => value === otherCanonical.getPattern()[index]
-        );
-    }
-
-    /**
      * 获取牌型的唯一标识符
      * 用于快速比较、存储等场景
      * @returns 标准形式的字符串表示
      */
-    getCanonicalId(): string {
+    getId(): string {
         // 如果有缓存，直接返回
         if (this.canonicalIdCache !== null) {
             return this.canonicalIdCache;
         }
 
-        this.canonicalIdCache = this.getCanonicalForm().getPattern().join(',');
+        this.canonicalIdCache = this.getPattern().join(',');
         return this.canonicalIdCache;
     }
 
