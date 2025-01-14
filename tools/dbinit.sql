@@ -4,9 +4,11 @@ CREATE TABLE IF NOT EXISTS okey101_pattern_cache (
     solution JSON NOT NULL,
     hits INT DEFAULT 1,
     last_accessed BIGINT,
+    joker_count TINYINT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_last_accessed (last_accessed),
-    INDEX idx_hits (hits)
+    INDEX idx_hits (hits),
+    INDEX idx_joker (joker_count)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 创建命中率统计表

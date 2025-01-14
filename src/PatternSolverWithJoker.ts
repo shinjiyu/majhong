@@ -32,7 +32,7 @@ export class PatternSolverWithJoker extends PatternSolver {
 
         // 尝试从缓存获取结果
         const cacheKey = this.getCacheKey(standardForm.pattern, 1);
-        const cachedSolution = this.cache.get(standardForm.pattern, cacheKey);
+        const cachedSolution = this.cache.get(standardForm.pattern, cacheKey, 1);
         if (cachedSolution) {
             return this.restoreSolution(cachedSolution, standardForm);
         }
@@ -58,7 +58,7 @@ export class PatternSolverWithJoker extends PatternSolver {
                 }))
             }))
         };
-        this.cache.set(standardForm.pattern, standardSolution, cacheKey);
+        this.cache.set(standardForm.pattern, standardSolution, cacheKey, 1);
         
         return this.restoreSolution(solution, standardForm);
     }
@@ -68,7 +68,7 @@ export class PatternSolverWithJoker extends PatternSolver {
 
         // 尝试从缓存获取结果
         const cacheKey = this.getCacheKey(standardForm.pattern, 2);
-        const cachedSolution = this.cache.get(standardForm.pattern, cacheKey);
+        const cachedSolution = this.cache.get(standardForm.pattern, cacheKey, 2);
         if (cachedSolution) {
             return this.restoreSolution(cachedSolution, standardForm);
         }
@@ -96,7 +96,7 @@ export class PatternSolverWithJoker extends PatternSolver {
                 }))
             }))
         };
-        this.cache.set(standardForm.pattern, standardSolution, cacheKey);
+        this.cache.set(standardForm.pattern, standardSolution, cacheKey, 2);
 
         return this.restoreSolution(solution1, standardForm);
     }

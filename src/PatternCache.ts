@@ -9,6 +9,7 @@ interface PatternCacheRow extends RowDataPacket {
     solution: string;
     hits: number;
     last_accessed: number;
+    joker_count: number;
 }
 
 interface HitRateStatsRow extends RowDataPacket {
@@ -23,6 +24,7 @@ interface HitRateStatsRow extends RowDataPacket {
 export interface CacheStats {
     hits: number;
     lastAccessed: number;
+    jokerCount: number;
 }
 
 export interface HitRateStats {
@@ -131,7 +133,8 @@ export class PatternCache {
                     this.cache.set(row.pattern_id, JSON.parse(row.solution));
                     this.stats.set(row.pattern_id, {
                         hits: row.hits,
-                        lastAccessed: row.last_accessed
+                        lastAccessed: row.last_accessed,
+                        jokerCount: row.joker_count
                     });
                 }
             }
@@ -161,7 +164,7 @@ export class PatternCache {
         }
     }
 
-    get(pattern: TilePattern, customKey?: string): Solution | undefined {
+    get(pattern: TilePattern, customKey?: string, jokerCount: number = 0): Solution | undefined {
         if (!this.isInitialized) {
             throw new Error('Cache not initialized. Call initialize() first.');
         }
@@ -172,7 +175,7 @@ export class PatternCache {
         this.updateHitRateStats(!!solution);
         
         if (solution) {
-            const stats = this.stats.get(id) || { hits: 0, lastAccessed: 0 };
+            const stats = this.stats.get(id) || { hits: 0, lastAccessed: 0, jokerCount };
             stats.hits++;
             stats.lastAccessed = Date.now();
             this.stats.set(id, stats);
@@ -182,7 +185,7 @@ export class PatternCache {
         return solution;
     }
 
-    set(pattern: TilePattern, solution: Solution, customKey?: string): void {
+    set(pattern: TilePattern, solution: Solution, customKey?: string, jokerCount: number = 0): void {
         if (!this.isInitialized) {
             throw new Error('Cache not initialized. Call initialize() first.');
         }
@@ -194,7 +197,7 @@ export class PatternCache {
         }
         
         this.cache.set(id, solution);
-        this.stats.set(id, { hits: 1, lastAccessed: Date.now() });
+        this.stats.set(id, { hits: 1, lastAccessed: Date.now(), jokerCount });
         this.isDirty = true;
     }
 
@@ -244,16 +247,23 @@ export class PatternCache {
                 const stats = this.stats.get(id);
                 if (stats) {
                     await this.connection.execute(
-                        'INSERT INTO okey101_pattern_cache (pattern_id, solution, hits, last_accessed) VALUES (?, ?, ?, ?)',
-                        [id, JSON.stringify(solution), stats.hits, stats.lastAccessed]
+                        'INSERT INTO okey101_pattern_cache (pattern_id, solution, hits, last_accessed, joker_count) VALUES (?, ?, ?, ?, ?)',
+                        [id, JSON.stringify(solution), stats.hits, stats.lastAccessed, stats.jokerCount]
                     );
                 }
             }
 
             // Save hit rate stats
             await this.connection.execute(
-                'INSERT INTO okey101_hit_rate_stats SET ?',
-                [this.hitRateStats]
+                'INSERT INTO okey101_hit_rate_stats (total_requests, cache_hits, cache_misses, hit_rate, period_start, period_end) VALUES (?, ?, ?, ?, ?, ?)',
+                [
+                    this.hitRateStats.totalRequests,
+                    this.hitRateStats.cacheHits,
+                    this.hitRateStats.cacheMisses,
+                    this.hitRateStats.hitRate,
+                    this.hitRateStats.periodStart,
+                    this.hitRateStats.periodEnd
+                ]
             );
 
             // Commit transaction

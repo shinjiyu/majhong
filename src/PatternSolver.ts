@@ -209,7 +209,14 @@ export class PatternSolver {
             const restored = standardForm.restoreCombination(combination);
             return {
                 ...restored,
-                score: this.calculateScore(restored)
+                score: this.calculateScore(restored),
+                tiles: restored.tiles.map(tile => ({
+                    ...tile,
+                    isJoker: combination.tiles.find(t => 
+                        t.number === ((tile.number - standardForm.numberOffset - 1 + 13) % 13) + 1 && 
+                        t.color === standardForm.colorMapping[tile.color]
+                    )?.isJoker || false
+                }))
             };
         });
         return {
