@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { TilePattern, PatternSolverWithJoker, PatternInput, PatternParser } from 'okey101-core';
+import {  PatternSolverWithJoker, PatternInput, PatternParser, PatternCache } from 'okey101-core';
 
 const router = Router();
 const solver = new PatternSolverWithJoker();
@@ -73,6 +73,9 @@ router.post('/solve', async (req, res) => {
       jokerCount,
       solution
     });
+
+    // 同步缓存到数据库
+    await PatternCache.getInstance().syncToDatabase();
 
   } catch (error) {
     console.error('Error solving pattern:', error);

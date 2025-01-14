@@ -101,11 +101,30 @@ export class PatternCache {
         }, 5 * 60 * 1000);
     }
 
+    private async ensureConnection() {
+        if (!this.connection || !this.connection.ping) {
+            try {
+                const config = ConfigLoader.getInstance().getDatabaseConfig();
+                this.connection = await mysql.createConnection(config);
+                console.log('Database connection re-established');
+            } catch (error) {
+                console.error('Failed to re-establish database connection:', error);
+                throw error;
+            }
+        }
+    }
+
     private async syncBatchInserts() {
-        if (!this.connection || this.batchInserts.size === 0) return;
+        if (this.batchInserts.size === 0) return;
 
         try {
-            await this.connection.beginTransaction();
+            console.log(`[Cache] Starting database sync for ${this.batchInserts.size} items`);
+            
+            // 确保连接可用
+            await this.ensureConnection();
+            
+            await this.connection!.beginTransaction();
+            console.log('[Cache] Transaction started');
 
             // 批量插入或更新缓存数据
             const values = [];
@@ -121,7 +140,8 @@ export class PatternCache {
             }
 
             if (values.length > 0) {
-                await this.connection.query(
+                console.log(`[Cache] Inserting/updating ${values.length} patterns`);
+                await this.connection!.query(
                     `INSERT INTO okey101_pattern_cache 
                     (pattern_id, score, combinations, hits, last_accessed, joker_count) 
                     VALUES ? 
@@ -145,20 +165,42 @@ export class PatternCache {
                 this.hitRateStats.periodEnd
             ];
 
-            await this.connection.execute(
+            console.log('[Cache] Updating hit rate stats:', {
+                totalRequests: this.hitRateStats.totalRequests,
+                cacheHits: this.hitRateStats.cacheHits,
+                hitRate: (this.hitRateStats.hitRate * 100).toFixed(2) + '%'
+            });
+
+            await this.connection!.execute(
                 `INSERT INTO okey101_hit_rate_stats 
                 (total_requests, cache_hits, cache_misses, hit_rate, period_start, period_end) 
                 VALUES (?, ?, ?, ?, ?, ?)`,
                 stats
             );
 
-            await this.connection.commit();
+            await this.connection!.commit();
+            console.log('[Cache] Transaction committed successfully');
+            
             this.batchInserts.clear();
             this.isDirty = false;
 
         } catch (error) {
-            await this.connection.rollback();
-            console.error('Error syncing cache to database:', error);
+            try {
+                if (this.connection) {
+                    await this.connection.rollback();
+                    console.log('[Cache] Transaction rolled back due to error');
+                }
+            } catch (rollbackError) {
+                console.error('[Cache] Error during rollback:', rollbackError);
+            }
+            console.error('[Cache] Error syncing cache to database:', error);
+            
+            // 如果是连接错误，尝试重新连接
+            if ((error as any).code === 'PROTOCOL_CONNECTION_LOST' || 
+                (error instanceof Error && error.message.includes('closed state'))) {
+                this.connection = null;
+                console.log('[Cache] Connection reset due to connection error');
+            }
         }
     }
 
@@ -224,12 +266,9 @@ export class PatternCache {
         this.batchInserts.set(id, { solution, stats });
         this.isDirty = true;
 
-        // 测试模式：立即同步到数据库
-        if (process.env.NODE_ENV === 'development') {
-            this.syncBatchInserts().catch(error => {
-                console.error('Error syncing cache to database:', error);
-            });
-        }
+        console.log(`[Cache] Writing pattern: ${id}`);
+        console.log(`[Cache] Score: ${solution.score}, Combinations: ${solution.combinations.length}`);
+        console.log(`[Cache] Current cache size: ${this.cache.size}`);
     }
 
     async destroy(): Promise<void> {
@@ -264,7 +303,13 @@ export class PatternCache {
             stats.hits++;
             stats.lastAccessed = Date.now();
             this.stats.set(id, stats);
+            this.batchInserts.set(id, { solution, stats });
             this.isDirty = true;
+
+            console.log(`[Cache] Cache hit for pattern: ${id}`);
+            console.log(`[Cache] Hits: ${stats.hits}, Last accessed: ${new Date(stats.lastAccessed).toISOString()}`);
+        } else {
+            console.log(`[Cache] Cache miss for pattern: ${id}`);
         }
         
         return solution;
@@ -431,5 +476,13 @@ export class PatternCache {
             periodStart: Date.now(),
             periodEnd: Date.now()
         };
+    }
+
+    // 新增：手动同步方法，用于 API 处理完成后调用
+    async syncToDatabase(): Promise<void> {
+        if (this.isDirty) {
+            console.log('[Cache] Manual sync requested');
+            await this.syncBatchInserts();
+        }
     }
 }
