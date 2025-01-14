@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { PatternCache } from 'okey101-core';
 import solverRouter from './api/solverRouter';
 
 const app = express();
@@ -17,12 +18,29 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// 错误处理中间件
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something broke!' });
-});
+// 初始化服务器
+async function startServer() {
+  try {
+    // 初始化缓存
+    const cache = PatternCache.getInstance();
+    await cache.initialize();
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-}); 
+    // 启动服务器
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+    });
+
+    // 优雅关闭
+    process.on('SIGTERM', async () => {
+      console.log('SIGTERM signal received: closing HTTP server');
+      await cache.destroy();
+      process.exit(0);
+    });
+
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer(); 
