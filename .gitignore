@@ -1,10 +1,10 @@
 # Dependencies
-node_modules/
-package-lock.json
+**/node_modules/
+**/package-lock.json
 
 # Build output
-dist/
-build/
+**/dist/
+**/build/
 
 # IDE and editor files
 .vscode/
@@ -14,7 +14,7 @@ build/
 .DS_Store
 
 # Logs
-logs/
+**/logs/
 *.log
 npm-debug.log*
 
@@ -22,13 +22,16 @@ npm-debug.log*
 *.tsbuildinfo
 
 # Environment variables
-.env
-.env.local
-.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
 
 # Test coverage
-coverage/
+**/coverage/
 
 # Config files
-config/database.json
-config/*.json
+**/config/database.json
+**/config/*.json
+
+# Cache files
+**/pattern_cache.json
