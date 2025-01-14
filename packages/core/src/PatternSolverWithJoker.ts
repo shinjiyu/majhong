@@ -16,15 +16,26 @@ export class PatternSolverWithJoker extends PatternSolver {
     }
 
     solveWithJoker(pattern: TilePattern, jokerCount: 0 | 1 | 2): Solution {
-        if (jokerCount === 0) {
-            return this.solve(pattern);
+        let solution: Solution = {
+            score: 0,
+            combinations: []
+        };
+
+        if(jokerCount === 2 && solution.score === 0) {
+            solution = this.dealDoubleJoker(pattern);
+            jokerCount--;
+        }
+        
+        if(jokerCount === 1 && solution.score === 0) {
+            solution = this.dealSingleJoker(pattern);
+            jokerCount--;
+        }
+        
+        if(solution.score === 0) {
+            solution = this.solve(pattern);
         }
 
-        if (jokerCount === 1) {
-            return this.dealSingleJoker(pattern);
-        } else {
-            return this.dealDoubleJoker(pattern);
-        }
+        return solution;
     }
 
     dealSingleJoker(pattern: TilePattern): Solution {
