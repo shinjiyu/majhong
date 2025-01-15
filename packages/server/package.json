@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "ts-node-dev --max-old-space-size=16384 --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node --max-old-space-size=8192 dist/server.js",
+    "start": "node --max-old-space-size=16384 dist/server.js",
     "test": "jest"
   },
   "dependencies": {

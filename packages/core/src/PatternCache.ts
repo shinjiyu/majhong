@@ -433,8 +433,11 @@ export class PatternCache {
     async initialize(initDB: boolean = true): Promise<void> {
         if (this.isInitialized) return;
         if (initDB) {
+            console.log('Initializing database...');
             await this.initDB();
+            console.log('Loading cache...');
             await this.loadCache();
+            console.log('Cache initialized.');
         }
         this.isInitialized = true;
     }

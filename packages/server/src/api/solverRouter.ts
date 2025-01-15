@@ -73,10 +73,6 @@ router.post('/solve', async (req, res) => {
       jokerCount,
       solution
     });
-
-    // 同步缓存到数据库
-    await PatternCache.getInstance().syncToDatabase();
-
   } catch (error) {
     console.error('Error solving pattern:', error);
     res.status(500).json({ 

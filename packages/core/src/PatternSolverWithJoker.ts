@@ -21,17 +21,17 @@ export class PatternSolverWithJoker extends PatternSolver {
             combinations: []
         };
 
-        if(jokerCount === 2 && solution.score === 0) {
+        if (jokerCount === 2 && solution.score === 0) {
             solution = this.dealDoubleJoker(pattern);
             jokerCount--;
         }
-        
-        if(jokerCount === 1 && solution.score === 0) {
+
+        if (jokerCount === 1 && solution.score === 0) {
             solution = this.dealSingleJoker(pattern);
             jokerCount--;
         }
-        
-        if(solution.score === 0) {
+
+        if (solution.score === 0) {
             solution = this.solve(pattern);
         }
 
@@ -56,21 +56,9 @@ export class PatternSolverWithJoker extends PatternSolver {
         let combinations = [...sequenceCombinations, ...tripletCombinations];
 
         const solution = this.findBestSolution(combinations, standardForm.pattern, this.solve.bind(this));
-        
-        // 将结果存入缓存（存储标准型的解）
-        const standardSolution = {
-            score: solution.score,
-            combinations: solution.combinations.map(comb => ({
-                ...comb,
-                tiles: comb.tiles.map(tile => ({
-                    ...tile,
-                    number: ((tile.number - standardForm.numberOffset - 1 + 13) % 13) + 1,
-                    color: standardForm.colorMapping[tile.color]
-                }))
-            }))
-        };
-        this.cache.set(standardForm.pattern, standardSolution, cacheKey, 1);
-        
+
+        this.cache.set(standardForm.pattern, solution, cacheKey, 1);
+
         return this.restoreSolution(solution, standardForm);
     }
 
@@ -95,19 +83,7 @@ export class PatternSolverWithJoker extends PatternSolver {
             solution1 = solution1.score > solution2.score ? solution1 : solution2;
         }
 
-        // 将结果存入缓存（存储标准型的解）
-        const standardSolution = {
-            score: solution1.score,
-            combinations: solution1.combinations.map(comb => ({
-                ...comb,
-                tiles: comb.tiles.map(tile => ({
-                    ...tile,
-                    number: ((tile.number - standardForm.numberOffset - 1 + 13) % 13) + 1,
-                    color: standardForm.colorMapping[tile.color]
-                }))
-            }))
-        };
-        this.cache.set(standardForm.pattern, standardSolution, cacheKey, 2);
+        this.cache.set(standardForm.pattern, solution1, cacheKey, 2);
 
         return this.restoreSolution(solution1, standardForm);
     }
