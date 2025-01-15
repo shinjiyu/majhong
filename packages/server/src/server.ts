@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { PatternCache } from 'okey101-core';
 import solverRouter from './api/solverRouter';
+import systemRouter from './api/systemRouter';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -12,6 +13,7 @@ app.use(express.json());
 
 // 路由
 app.use('/api', solverRouter);
+app.use('/api/system', systemRouter);
 
 // 健康检查
 app.get('/health', (req, res) => {
