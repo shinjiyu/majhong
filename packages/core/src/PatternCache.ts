@@ -1,8 +1,8 @@
-import { TilePattern } from './TilePattern';
-import type { Solution } from './PatternSolver';
-import mysql from 'mysql2/promise';
 import { RowDataPacket } from 'mysql2';
+import mysql from 'mysql2/promise';
 import { ConfigLoader } from './config/DatabaseConfig';
+import type { Solution } from './PatternSolver';
+import { TilePattern } from './TilePattern';
 
 interface PatternCacheRow extends RowDataPacket {
     pattern_id: string;
@@ -46,7 +46,7 @@ export class PatternCache {
     private isInitialized: boolean;
     private connection: mysql.Connection | null = null;
     private syncInterval: NodeJS.Timeout | null = null;
-    private batchInserts: Map<string, {solution: Solution, stats: CacheStats}> = new Map();
+    private batchInserts: Map<string, { solution: Solution, stats: CacheStats }> = new Map();
     private hitRateStats: HitRateStats = {
         totalRequests: 0,
         cacheHits: 0,
@@ -56,7 +56,7 @@ export class PatternCache {
         periodEnd: Date.now()
     };
 
-    private constructor(maxSize: number = 10000) {
+    private constructor(maxSize: number = 1000) {
         this.cache = new Map();
         this.stats = new Map();
         this.maxSize = maxSize;
@@ -65,7 +65,7 @@ export class PatternCache {
         this.resetHitRateStats();
     }
 
-    private async initDB() {
+    private async initDB(autoSync: boolean = false) {
         try {
             const config = ConfigLoader.getInstance().getDatabaseConfig();
             this.connection = await mysql.createConnection(config);
@@ -74,7 +74,7 @@ export class PatternCache {
             const fs = require('fs');
             const path = require('path');
             const initSQL = fs.readFileSync(path.join(__dirname, '../tools/dbinit.sql'), 'utf8');
-            
+
             // 分割SQL语句并执行
             const statements = initSQL.split(';').filter((stmt: string) => stmt.trim());
             for (const statement of statements) {
@@ -84,7 +84,9 @@ export class PatternCache {
             }
 
             // 启动定期同步
-            this.startPeriodicSync();
+            if (autoSync) {
+                this.startPeriodicSync();
+            }
 
         } catch (error) {
             throw error;
@@ -116,12 +118,12 @@ export class PatternCache {
 
         try {
             await this.ensureConnection();
-            
+
             await this.connection!.beginTransaction();
 
             // 批量插入或更新缓存数据
             const values = [];
-            for (const [id, {solution, stats}] of this.batchInserts.entries()) {
+            for (const [id, { solution, stats }] of this.batchInserts.entries()) {
                 values.push([
                     id,
                     solution.score,
@@ -165,7 +167,7 @@ export class PatternCache {
             );
 
             await this.connection!.commit();
-            
+
             this.batchInserts.clear();
             this.isDirty = false;
 
@@ -177,9 +179,9 @@ export class PatternCache {
             } catch (rollbackError) {
                 // Ignore rollback error
             }
-            
+
             // 如果是连接错误，尝试重新连接
-            if ((error as any).code === 'PROTOCOL_CONNECTION_LOST' || 
+            if ((error as any).code === 'PROTOCOL_CONNECTION_LOST' ||
                 (error instanceof Error && error.message.includes('closed state'))) {
                 this.connection = null;
             }
@@ -235,11 +237,11 @@ export class PatternCache {
         }
 
         const id = customKey || pattern.getId();
-        
+
         if (this.cache.size >= this.maxSize) {
             this.evictLeastUsed();
         }
-        
+
         this.cache.set(id, solution);
         const stats = { hits: 1, lastAccessed: Date.now(), jokerCount };
         this.stats.set(id, stats);
@@ -271,9 +273,9 @@ export class PatternCache {
 
         const id = customKey || pattern.getId();
         const solution = this.cache.get(id);
-        
+
         this.updateHitRateStats(!!solution);
-        
+
         if (solution) {
             const stats = this.stats.get(id) || { hits: 0, lastAccessed: 0, jokerCount };
             stats.hits++;
@@ -282,24 +284,24 @@ export class PatternCache {
             this.batchInserts.set(id, { solution, stats });
             this.isDirty = true;
         }
-        
+
         return solution;
     }
 
     private evictLeastUsed(): void {
         let leastUsedId: string | null = null;
         let leastUsedScore = Infinity;
-        
+
         for (const [id, stats] of this.stats.entries()) {
             const timeDiff = Date.now() - stats.lastAccessed;
             const score = stats.hits / (timeDiff + 1);
-            
+
             if (score < leastUsedScore) {
                 leastUsedScore = score;
                 leastUsedId = id;
             }
         }
-        
+
         if (leastUsedId) {
             this.cache.delete(leastUsedId);
             this.stats.delete(leastUsedId);
@@ -367,7 +369,7 @@ export class PatternCache {
         if (!this.isInitialized) {
             throw new Error('Cache not initialized. Call initialize() first.');
         }
-        
+
         this.cache.clear();
         this.stats.clear();
         this.resetHitRateStats();
@@ -389,7 +391,7 @@ export class PatternCache {
         if (!this.isInitialized) {
             throw new Error('Cache not initialized. Call initialize() first.');
         }
-        
+
         this.resetHitRateStats();
         this.isDirty = true;
     }
@@ -430,11 +432,11 @@ export class PatternCache {
         return PatternCache.instance;
     }
 
-    async initialize(initDB: boolean = true): Promise<void> {
+    async initialize(initDB: boolean = true, autoSync: boolean = false): Promise<void> {
         if (this.isInitialized) return;
         if (initDB) {
             console.log('Initializing database...');
-            await this.initDB();
+            await this.initDB(autoSync);
             console.log('Loading cache...');
             await this.loadCache();
             console.log('Cache initialized.');

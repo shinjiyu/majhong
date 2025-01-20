@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface MemoryMetrics {
     heapStatistics: {
@@ -19,10 +19,29 @@ interface MemoryMetrics {
     };
 }
 
+interface SyncResponse {
+    success: boolean;
+    message: string;
+    stats: {
+        cacheSize: number;
+        hitRate: {
+            totalRequests: number;
+            cacheHits: number;
+            cacheMisses: number;
+            hitRate: number;
+            periodStart: number;
+            periodEnd: number;
+        };
+        maxSize: number;
+    };
+}
+
 export function MemoryStats() {
     const [metrics, setMetrics] = useState<MemoryMetrics | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [syncing, setSyncing] = useState(false);
+    const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchMetrics = async () => {
@@ -47,6 +66,29 @@ export function MemoryStats() {
         return () => clearInterval(interval);
     }, []);
 
+    const handleSync = async () => {
+        setSyncing(true);
+        setSyncMessage(null);
+        try {
+            const response = await fetch('http://localhost:3000/api/system/cache/sync', {
+                method: 'POST'
+            });
+            const data: SyncResponse = await response.json();
+            
+            if (data.success) {
+                setSyncMessage(`${data.message} - Cache size: ${data.stats.cacheSize}, Hit rate: ${(data.stats.hitRate.hitRate * 100).toFixed(1)}%`);
+            } else {
+                throw new Error(data.message || 'Sync failed');
+            }
+        } catch (err) {
+            setSyncMessage(err instanceof Error ? err.message : 'Failed to sync cache');
+        } finally {
+            setSyncing(false);
+            // 自动清除消息
+            setTimeout(() => setSyncMessage(null), 5000);
+        }
+    };
+
     if (loading) {
         return <div className="loading">Loading memory statistics...</div>;
     }
@@ -63,6 +105,21 @@ export function MemoryStats() {
         <div className="memory-stats">
             <h2>Memory Usage Statistics</h2>
             
+            <div className="sync-section">
+                <button 
+                    onClick={handleSync} 
+                    disabled={syncing}
+                    className={`sync-button ${syncing ? 'syncing' : ''}`}
+                >
+                    {syncing ? 'Syncing...' : 'Sync Cache'}
+                </button>
+                {syncMessage && (
+                    <div className={`sync-message ${syncMessage.includes('failed') ? 'error' : 'success'}`}>
+                        {syncMessage}
+                    </div>
+                )}
+            </div>
+
             <div className="stats-section">
                 <h3>Heap Statistics</h3>
                 <div className="stats-grid">
