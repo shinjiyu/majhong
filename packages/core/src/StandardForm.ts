@@ -7,7 +7,7 @@ export interface Tile {
 }
 
 export interface Combination {
-    type: 'sequence' | 'triplet';
+    type: 'sequence' | 'triplet' | 'pair';
     tiles: Tile[];
 }
 

@@ -1,11 +1,13 @@
 // 导出核心类和类型
-export { TilePattern } from './TilePattern';
+export { PairPatterSolverWithJoker } from './PairPatterSolverWithJoker';
+export { PatternCache } from './PatternCache';
+export { PatternInput, PatternParser } from './PatternParser';
+export { PatternPreprocessor } from './PatternPreprocessor';
 export { PatternSolver } from './PatternSolver';
 export { PatternSolverWithJoker } from './PatternSolverWithJoker';
 export { StandardForm } from './StandardForm';
-export { PatternParser, PatternInput } from './PatternParser';
-export { PatternPreprocessor } from './PatternPreprocessor';
-export { PatternCache } from './PatternCache';
+export { TilePattern } from './TilePattern';
 
 // 导出类型定义
-export type { Solution, ScoredCombination } from './types'; 
+export type { ScoredCombination, Solution } from './types';
+
