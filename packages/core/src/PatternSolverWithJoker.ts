@@ -390,7 +390,7 @@ export class PatternSolverWithJoker extends PatternSolver {
                     comb.tiles = comb.tiles.map(t => {
                         if (t.isJoker) {
                             const color = unusedColors.pop()!;
-                            return { number: 13, color: color as Color };
+                            return { number: 13, color: color as Color, isJoker: true };
                         }
                         return t;
                     });
